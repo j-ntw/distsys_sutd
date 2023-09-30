@@ -18,8 +18,9 @@ func server(c chan []int) {
 		// flip a coin to send or drop
 		if coinFlip() {
 			// broadcast with server id, msg
-			c <- []int{0, v[1]}
-			fmt.Println("Sending ", i)
+			broadcast := []int{0, v[1]}
+			c <- broadcast
+			fmt.Printf("s_%d broadcast: %d\n", broadcast[0], broadcast[1])
 		}
 
 	}
@@ -29,12 +30,12 @@ func client(c chan []int, client_id int) {
 		// create message
 		out_msg := []int{client_id, rand.Intn(10000)}
 		c <- out_msg
-
+		fmt.Printf("c_%d broadcast: %d\n", out_msg[0], out_msg[1])
 		sleepRand() // do i need to sleep for nonzero time
 
 		// check for message
 		in_msg := <-c
-		if in_msg[0] != 0{
+		if in_msg[0] != 0 {
 			// put it back
 
 			//TODO i think we need 2 channels, otherwise clients might take back their own msg?
