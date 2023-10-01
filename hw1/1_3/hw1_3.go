@@ -23,19 +23,24 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 	var clock = [numEntities]int{}
 	fmt.Println("start server")
 	for {
-		// increment own clock
-		clock[numClients] += 1 * serverClock
-
-		// check which channel needs attention
+		// recieve on public channel
 		in_msg := <-ch_server
 		fmt.Printf("server recieve from c_%d: %d, clock_%d\n ", in_msg.id, in_msg.data, in_msg.clock)
 
 		// adjust clock
 		clock = adjustClock(numClients, clock, in_msg.clock)
 
+		// increment own clock
+		clock[numClients] += 1 * serverClock
+
 		// flip a coin to send or drop
 		if coinFlip() {
+			// broadcast on private channels
 			go broadcast(in_msg, ch_arr)
+
+			// increment own clock
+			clock[numClients] += 1 * serverClock
+
 		} else {
 			fmt.Printf("server drop: c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
 		}
@@ -59,7 +64,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 
 		// sleep for nonzero time
 		sleepRand()
-		
+
 		go func() {
 			// recieve on private channel
 			in_msg := <-ch_client
@@ -67,6 +72,9 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 
 			// adjust clock
 			clock = adjustClock(client_id, clock, in_msg.clock)
+
+			// increment own clock
+			clock[client_id] += 1 * client_id
 		}()
 	}
 }
