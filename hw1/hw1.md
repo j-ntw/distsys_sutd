@@ -10,3 +10,8 @@ altogether. To solve this question, you will do the following:
 ## soln
 - use unbuffered channels of type Msg as means of communication. 
 - server has 
+
+## 1_2
+
+- reciever adjusts clock according to incoming message
+- print to file instead of terminal
