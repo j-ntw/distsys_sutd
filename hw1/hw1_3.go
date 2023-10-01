@@ -59,6 +59,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 
 		// sleep for nonzero time
 		sleepRand()
+		
 		go func() {
 			// recieve on private channel
 			in_msg := <-ch_client
