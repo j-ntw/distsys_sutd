@@ -8,6 +8,10 @@ altogether. To solve this question, you will do the following:
 1. Simulate the behaviour of both the server and the registered clients via GO routines. 
 
 ## soln
-- use unbuffered channel as means of communication. 
-- By default, sends and receives block until the other side is ready. This allows goroutines to synchronize without explicit locks or condition variables.
-- value: client_id, msg
+- use unbuffered channels of type Msg as means of communication. 
+- server has 
+
+## 1_2
+
+- reciever adjusts clock according to incoming message
+- print to file instead of terminal
