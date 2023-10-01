@@ -10,31 +10,35 @@ const (
 	maxClients = 10
 )
 
-func server(c chan []int) {
+type Msg struct {
+	id   int
+	data int
+}
+
+func server(ch [maxClients]chan Msg) {
 	for i := 0; ; i++ {
 
 		// get value from channel
-		v := <-c
+		in_msg := <-ch
 		// flip a coin to send or drop
 		if coinFlip() {
 			// broadcast with server id, msg
-			broadcast := []int{0, v[1]}
-			c <- broadcast
-			fmt.Printf("s_%d broadcast: %d\n", broadcast[0], broadcast[1])
+
+			fmt.Printf("s_%d broadcast: %d\n", broadcast, broadcast[1])
 		}
 
 	}
 }
-func client(c chan []int, client_id int) {
+func client(ch chan Msg, client_id int) {
 	for i := 0; ; i++ {
 		// create message
 		out_msg := []int{client_id, rand.Intn(10000)}
-		c <- out_msg
+		ch <- out_msg
 		fmt.Printf("c_%d broadcast: %d\n", out_msg[0], out_msg[1])
 		sleepRand() // do i need to sleep for nonzero time
 
 		// check for message
-		in_msg := <-c
+		in_msg := <-ch
 		if in_msg[0] != 0 {
 			// put it back
 
@@ -55,15 +59,14 @@ func sleepRand() {
 	time.Sleep(time.Millisecond * amt)
 }
 func main() {
-	// create a channel of type integer
-	var c chan []int = make(chan []int)
-
-	// launch go routines "server" and "client"
-
-	for i := 1; i == maxClients; i++ {
-		go client(c, i)
+	var ch_arr [maxClients]chan Msg
+	for i := 0; i < maxClients; i++ {
+		// create a channel of type Msg
+		ch := make(chan Msg)
+		go client(ch, i) // TODO check race con
+		ch_arr[i] = ch
 	}
-	go server(c)
+	go server(ch_arr)
 	var input string
 	fmt.Scanln(&input)
 }
