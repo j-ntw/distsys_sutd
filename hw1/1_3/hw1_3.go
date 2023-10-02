@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
+	"sort"
+	"sync"
+	"text/tabwriter"
 	"time"
 )
 
@@ -10,73 +14,89 @@ const (
 	numClients  = 10
 	timeDilator = 10
 	serverClock = 11
+	server_id   = 0
 	numEntities = numClients + 1
 )
 
 type Msg struct {
-	id    int
-	data  int
-	clock [numEntities]int
+	from int
+	to   int
+	ts   [numEntities]int
+	data int
+}
+type Mailbox struct {
+	msg_arr []Msg
+	mu      sync.Mutex
+}
+type VectorClock struct {
+	mu sync.Mutex
+	ts [numEntities]int
 }
 
 func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
-	var clock = [numEntities]int{}
+	clock := VectorClock{}
 	fmt.Println("start server")
 	for {
+
 		// recieve on public channel
 		in_msg := <-ch_server
-		fmt.Printf("server recieve from c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
+		fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
 		// adjust clock
-		clock = adjustClock(numClients, clock, in_msg.clock)
+		clock.AdjustClock(numClients, clock.ts, in_msg.ts)
 
 		// increment own clock
-		clock[numClients] += 1 * serverClock
+		clock.Inc(server_id)
 
 		// flip a coin to send or drop
 		if coinFlip() {
 			// broadcast on private channels
-			go broadcast(in_msg, ch_arr)
+			go Broadcast(in_msg, ch_arr)
 
 			// increment own clock
-			clock[numClients] += 1 * serverClock
+			clock.Inc(server_id)
 
 		} else {
-			fmt.Printf("server drop: c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
+			fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 		}
 
 	}
 }
 
-func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
-	var clock = [numEntities]int{}
+func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mailbox) {
+	clock := VectorClock{}
 	fmt.Printf("start c_%d\n", client_id)
-	for {
-		// increment own clock
-		clock[client_id] += 1 * client_id
-
-		// create message
-		out_msg := Msg{client_id, rand.Intn(10000), clock}
-
-		// send on public channel
-		ch_server <- out_msg
-		fmt.Printf("c_%d send to server: %d, clock_%d\n", out_msg.id, out_msg.data, out_msg.clock)
-
-		// sleep for nonzero time
-		sleepRand()
-
-		go func() {
-			// recieve on private channel
-			in_msg := <-ch_client
-			fmt.Printf("c_%d recieve from c_%d: %d, clock_%d\n", client_id, in_msg.id, in_msg.data, in_msg.clock)
-
-			// adjust clock
-			clock = adjustClock(client_id, clock, in_msg.clock)
-
+	go func() {
+		for {
 			// increment own clock
-			clock[client_id] += 1 * (client_id + 1)
-		}()
-	}
+			clock.Inc(client_id)
+
+			// create message
+			out_msg := Msg{client_id, server_id, clock.ts, rand.Intn(10000)}
+
+			// send on public channel
+			ch_server <- out_msg
+			fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
+
+			// sleep for nonzero time
+			sleepRand()
+		}
+	}()
+	go func() {
+		// recieve on private channel
+		in_msg := <-ch_client
+		fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+
+		// adjust clock
+		clock.AdjustClock(client_id, clock.ts, in_msg.ts)
+
+		// increment own clock
+		clock.Inc(client_id)
+
+		// save message
+		mailbox.Append(in_msg)
+	}()
+
 }
 
 func coinFlip() bool {
@@ -86,47 +106,82 @@ func coinFlip() bool {
 func sleepRand() {
 	//sleep sporadically for [1,1000] * timeDilator ms
 	randamt := rand.Intn(1000) + 1
-	fmt.Printf("sleeping: %d ms\n", randamt)
+	// fmt.Printf("sleeping: %d ms\n", randamt)
 	amt := time.Duration(randamt)
 	time.Sleep(time.Millisecond * amt * timeDilator)
 }
 
-func broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
-	fmt.Printf("server broadcast msg: c_%d: %d\n", broadcast_msg.id, broadcast_msg.data)
+func Broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
+	fmt.Printf("%d->%d @%d: %d\n", broadcast_msg.from, broadcast_msg.to, broadcast_msg.ts, broadcast_msg.data)
 	for i, ch_client := range ch_arr {
-		if i != broadcast_msg.id {
+		if i != broadcast_msg.from {
 			ch_client <- broadcast_msg
 		}
 	}
 }
 
-func adjustClock(id int, clock [numEntities]int, msg_clock [numEntities]int) [numEntities]int {
-	if msg_clock[id] > clock[id] {
-		fmt.Printf("adjust clock: %v->%v\n", clock, msg_clock)
-		return msg_clock
+func (clock *VectorClock) AdjustClock(id int, ts [numEntities]int, msg_ts [numEntities]int) {
+	clock.mu.Lock()
+	if msg_ts[id] > ts[id] {
+		fmt.Printf("adjust clock: %v->%v\n", ts, msg_ts)
+		clock.ts = msg_ts
 
 	} else {
-		fmt.Printf("adjust clock: %v->%v\n", clock, clock)
-		return clock
+		fmt.Printf("adjust clock: %v->%v\n", ts, ts)
+		clock.ts = ts
 	}
+	clock.mu.Unlock()
+}
 
+func (clock *VectorClock) Inc(id int) {
+	clock.mu.Lock()
+	clock.ts[id]++
+	clock.mu.Unlock()
+}
+
+func (mailbox *Mailbox) Append(msg Msg) {
+	mailbox.mu.Lock()
+	mailbox.msg_arr = append(mailbox.msg_arr, msg)
+	mailbox.mu.Unlock()
+}
+func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
+	fmt.Fprintln(w, "From\tTo\tTimestamp\tData")
+	for _, msg := range mailbox.msg_arr {
+		fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", msg.from, msg.to, msg.ts, msg.data)
+	}
+	w.Flush()
 }
 
 func main() {
 	var ch_arr [numClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
+	var mailbox Mailbox
+
 	fmt.Println("create clients")
 	for i := range ch_arr {
 		// make a channel of type Msg
 		// add ch to array
-		ch_arr[i] = make(chan Msg)
-		// prevent race condition
-		go func(mindex int) {
-			go client(ch_arr[mindex], mindex, ch_server)
-		}(i)
+		if i != 0 {
+			ch_arr[i] = make(chan Msg)
+			go client(ch_arr[i], i, ch_server, &mailbox)
+		}
+
 	}
 	fmt.Println("create server")
 	go server(ch_arr, ch_server)
 	var input string
 	fmt.Scanln(&input)
+
+	// sort messages in mailbox by timestamp
+	mailbox.mu.Lock()
+	sort.Slice(mailbox.msg_arr, func(i, j int) bool {
+		// todo how to sort vector clock
+		return mailbox.msg_arr[i].ts < mailbox.msg_arr[j].ts
+	})
+
+	// print messages in table
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	mailbox.PrintWhileLocked(w)
+	mailbox.mu.Unlock()
+	fmt.Println("Done")
 }

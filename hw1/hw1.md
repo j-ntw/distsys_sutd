@@ -16,3 +16,9 @@
 
 - saves messages that clients receive to some object
 - we can sort the object.
+
+
+## 1_3
+- currently printf shows msg contents, but we also want to know if its Receive, Transmit or Forward and who did it [also](#1_2)
+- how to sort vector clock?
+- causality violation detection

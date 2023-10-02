@@ -41,7 +41,7 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 
 		// recieve on public channel
 		in_msg := <-ch_server
-		fmt.Printf("%d->%d @%d: %d \n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+		fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
 		// adjust clock
 		clock.AdjustClock(server_id, clock.ts, in_msg.ts)
@@ -59,6 +59,7 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 			clock.Inc() //* serverClock
 
 		} else {
+			// todo change drop
 			fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 		}
 
@@ -141,7 +142,6 @@ func (clock *LamportClock) AdjustClock(id int, ts int, msg_ts int) {
 
 func (clock *LamportClock) Inc() {
 	clock.mu.Lock()
-	// Lock so only one goroutine at a time can access the map c.v.
 	clock.ts += 1
 	clock.mu.Unlock()
 }
@@ -163,6 +163,7 @@ func main() {
 	var ch_arr [numClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
 	var mailbox Mailbox
+
 	fmt.Println("create clients")
 	for i := range ch_arr {
 		// make a channel of type Msg
