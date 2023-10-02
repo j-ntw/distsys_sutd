@@ -13,3 +13,6 @@
 
 - reciever adjusts clock according to incoming message
 - print to file instead of terminal
+
+- saves messages that clients receive to some object
+- we can sort the object.
