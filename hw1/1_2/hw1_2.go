@@ -33,9 +33,9 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 		clock += 1 * serverClock
 
 		// flip a coin to send or drop
-		if coinFlip() {
+		if CoinFlip() {
 			// broadcast on private channels
-			go broadcast(in_msg, ch_arr)
+			go Broadcast(in_msg, ch_arr)
 
 			// increment own clock
 			clock += 1 * serverClock
@@ -62,7 +62,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 		fmt.Printf("c_%d send to server: %d, clock_%d\n", out_msg.id, out_msg.data, out_msg.clock)
 
 		// sleep for nonzero time
-		sleepRand()
+		SleepRand()
 
 		go func() {
 			// recieve on private channel
@@ -78,11 +78,11 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 	}
 }
 
-func coinFlip() bool {
+func CoinFlip() bool {
 	return rand.Intn(2) == 1
 }
 
-func sleepRand() {
+func SleepRand() {
 	//sleep sporadically for [1,1000] * timeDilator ms
 	randamt := rand.Intn(1000) + 1
 	fmt.Printf("sleeping: %d ms\n", randamt)
@@ -90,7 +90,7 @@ func sleepRand() {
 	time.Sleep(time.Millisecond * amt * timeDilator)
 }
 
-func broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
+func Broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
 	fmt.Printf("server broadcast msg: c_%d: %d\n", broadcast_msg.id, broadcast_msg.data)
 	for i, ch_client := range ch_arr {
 		if i != broadcast_msg.id {
