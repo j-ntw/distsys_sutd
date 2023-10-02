@@ -7,7 +7,7 @@
 
 ### How to run
 ```
-go run hw1/1_1/hw1.go
+go run hw1/1_1/hw1.go hw1/1_1/util.go
 ```
 - Runs clients and server
 
