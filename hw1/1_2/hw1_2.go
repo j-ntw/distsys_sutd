@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -18,10 +19,16 @@ type Msg struct {
 	clock int
 }
 
+type LamportClock struct {
+	mu sync.Mutex
+	ts int
+}
+
 func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 	clock := 0
 	fmt.Println("start server")
 	for {
+
 		// recieve on public channel
 		in_msg := <-ch_server
 		fmt.Printf("server recieve from c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
@@ -30,15 +37,16 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 		clock = adjustClock(-1, clock, in_msg.clock)
 
 		// increment own clock
-		clock += 1 * serverClock
+		clock += 1 // * serverClock
 
 		// flip a coin to send or drop
 		if CoinFlip() {
 			// broadcast on private channels
-			go Broadcast(in_msg, ch_arr)
+			broadcast_msg := Msg{in_msg.id, in_msg.data, clock}
+			go Broadcast(broadcast_msg, ch_arr)
 
 			// increment own clock
-			clock += 1 * serverClock
+			clock += 1 //* serverClock
 
 		} else {
 			fmt.Printf("server drop: c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
@@ -48,34 +56,39 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 }
 
 func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
-	clock := 0
+
+	clock := LamportClock{}
 	fmt.Printf("start c_%d\n", client_id)
-	for {
-		// increment own clock
-		clock += 1 * client_id
+	go func() {
+		for {
+			// increment own clock
+			clock.ts += 1 //* (client_id + 1)
 
-		// create message
-		out_msg := Msg{client_id, rand.Intn(10000), clock}
+			// create message
+			out_msg := Msg{client_id, rand.Intn(10000), clock.ts}
 
-		// send on public channel
-		ch_server <- out_msg
-		fmt.Printf("c_%d send to server: %d, clock_%d\n", out_msg.id, out_msg.data, out_msg.clock)
+			// send on public channel
+			ch_server <- out_msg
+			fmt.Printf("c_%d send to server: %d, clock_%d\n", out_msg.id, out_msg.data, out_msg.clock)
 
-		// sleep for nonzero time
-		SleepRand()
-
-		go func() {
+			// sleep for nonzero time
+			SleepRand()
+		}
+	}()
+	go func() {
+		for {
 			// recieve on private channel
 			in_msg := <-ch_client
 			fmt.Printf("c_%d recieve from c_%d: %d, clock_%d\n", client_id, in_msg.id, in_msg.data, in_msg.clock)
 
 			// adjust clock
-			clock = adjustClock(client_id, clock, in_msg.clock)
+			clock.ts = adjustClock(client_id, clock.ts, in_msg.clock)
 
 			// increment own clock
-			clock += 1 * (client_id + 1)
-		}()
-	}
+			clock.ts += 1 //* (client_id + 1)
+		}
+	}()
+
 }
 
 func CoinFlip() bool {
@@ -119,10 +132,9 @@ func main() {
 		// make a channel of type Msg
 		// add ch to array
 		ch_arr[i] = make(chan Msg)
-		// prevent race condition
-		go func(mindex int) {
-			go client(ch_arr[mindex], mindex, ch_server)
-		}(i)
+
+		go client(ch_arr[i], i, ch_server)
+
 	}
 	fmt.Println("create server")
 	go server(ch_arr, ch_server)
