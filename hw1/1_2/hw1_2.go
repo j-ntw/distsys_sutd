@@ -8,8 +8,8 @@ import (
 
 const (
 	numClients  = 10
-	timeDilator = 10
-	serverClock = 11
+	timeDilator = 1
+	serverClock = numClients + 2
 )
 
 type Msg struct {
@@ -24,7 +24,7 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 	for {
 		// recieve on public channel
 		in_msg := <-ch_server
-		fmt.Printf("server recieve from c_%d: %d, clock_%d\n ", in_msg.id, in_msg.data, in_msg.clock)
+		fmt.Printf("server recieve from c_%d: %d, clock_%d\n", in_msg.id, in_msg.data, in_msg.clock)
 
 		// adjust clock
 		clock = adjustClock(-1, clock, in_msg.clock)
@@ -73,7 +73,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 			clock = adjustClock(client_id, clock, in_msg.clock)
 
 			// increment own clock
-			clock += 1 * client_id
+			clock += 1 * (client_id + 1)
 		}()
 	}
 }
@@ -101,11 +101,11 @@ func broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
 
 func adjustClock(id int, clock int, msg_clock int) int {
 	if msg_clock > clock {
-		fmt.Printf("adjust clock_%d: %d->%d", id, clock, msg_clock)
+		fmt.Printf("adjust clock_%d: %d->%d\n", id, clock, msg_clock)
 		return msg_clock
 
 	} else {
-		fmt.Printf("adjust clock_%d: %d->%d", id, clock, clock)
+		fmt.Printf("adjust clock_%d: %d->%d\n", id, clock, clock)
 		return clock
 	}
 
