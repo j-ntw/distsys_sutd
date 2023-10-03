@@ -12,8 +12,6 @@ import (
 
 const (
 	numClients  = 10
-	timeDilator = 1
-	serverClock = 11
 	server_id   = 0
 	numEntities = numClients + 1
 )
@@ -33,7 +31,7 @@ type VectorClock struct {
 	ts [numEntities]int
 }
 
-func server(ch_arr [numClients]chan Msg) {
+func server(ch_arr [numEntities]chan Msg) {
 	clock := VectorClock{}
 	fmt.Println("start server")
 	for {
@@ -57,6 +55,7 @@ func server(ch_arr [numClients]chan Msg) {
 			clock.Inc(server_id)
 
 		} else {
+			// drop msg
 			// fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 		}
 
@@ -79,22 +78,24 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 			// fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
 
 			// sleep for nonzero time
-			// SleepRand()
+			SleepRand()
 		}
 	}()
 	go func() {
-		// recieve on private channel
-		in_msg := <-ch_client
-		// fmt.Printf("%d->%d @%v: %d [rB]\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+		for {
+			// recieve on private channel
+			in_msg := <-ch_client
+			// fmt.Printf("%d->%d @%v: %d [rB]\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
-		// increment own clock
-		clock.Inc(client_id)
+			// increment own clock
+			clock.Inc(client_id)
 
-		// adjust clock
-		clock.AdjustClock(clock.ts, in_msg.ts)
+			// adjust clock
+			clock.AdjustClock(clock.ts, in_msg.ts)
 
-		// save message
-		mailbox.Append(in_msg)
+			// save message
+			mailbox.Append(in_msg)
+		}
 	}()
 
 }
@@ -104,14 +105,14 @@ func coinFlip() bool {
 }
 
 func SleepRand() {
-	// sleep sporadically for [1,1000] * timeDilator ms
+	// sleep sporadically for [1,1000] ms
 	randamt := rand.Intn(1000) + 1
 	// fmt.Printf("sleeping: %d ms\n", randamt)
 	amt := time.Duration(randamt)
-	time.Sleep(time.Millisecond * amt * timeDilator)
+	time.Sleep(time.Millisecond * amt)
 }
 
-func Broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
+func Broadcast(broadcast_msg Msg, ch_arr [numEntities]chan Msg) {
 	// broadcast from server(ch0) to all channels except originator
 	// fmt.Printf("%d->%d @%d: %d [sB]\n", broadcast_msg.from, broadcast_msg.to, broadcast_msg.ts, broadcast_msg.data)
 	for i, ch_client := range ch_arr {
@@ -164,7 +165,7 @@ func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
 func main() {
 
 	// initialize
-	var ch_arr [numClients]chan Msg
+	var ch_arr [numEntities]chan Msg
 	var mailbox Mailbox
 
 	fmt.Println("create clients")
@@ -173,6 +174,7 @@ func main() {
 		// add ch to array
 		ch_arr[i] = make(chan Msg)
 		if i != 0 {
+			// create client ids 1-10
 			go client(ch_arr[i], i, ch_arr[0], &mailbox)
 		}
 	}
@@ -190,15 +192,15 @@ func main() {
 	// sort messages in mailbox by timestamp
 	mailbox.mu.Lock()
 
-	sort.Slice(mailbox.msg_arr, func(i, j int) bool {
+	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
 		// sort vector clock
 		// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
 		// A-/>B if any A_i > B_i for all i \elem [0, len(A))
-		// for k := 0; k < numEntities; k++ {
-		// 	if mailbox.msg_arr[i].ts[k] > mailbox.msg_arr[j].ts[k] {
-		// 		return false
-		// 	}
-		// }
+		for k := 0; k < numEntities; k++ {
+			if mailbox.msg_arr[i].ts[k] > mailbox.msg_arr[j].ts[k] {
+				return false
+			}
+		}
 		return true
 	})
 
