@@ -5,9 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"sort"
-	"sync"
 	"text/tabwriter"
-	"time"
 )
 
 const (
@@ -16,42 +14,6 @@ const (
 	numEntities = numClients + 1
 )
 
-type Msg struct {
-	from int
-	to   int
-	ts   [numEntities]int
-	data int
-}
-type Mailbox struct {
-	msg_arr []Msg
-	mu      sync.Mutex
-}
-type VectorClock struct {
-	mu sync.Mutex
-	ts [numEntities]int
-}
-
-func coinFlip() bool {
-	return rand.Intn(2) == 1
-}
-
-func SleepRand() {
-	// sleep sporadically for [1,1000] ms
-	randamt := rand.Intn(1000) + 1
-	amt := time.Duration(randamt)
-	time.Sleep(time.Millisecond * amt)
-}
-
-func Broadcast(broadcast_msg Msg, ch_arr [numEntities]chan Msg) {
-	// broadcast from server(ch0) to all channels except originator
-	// fmt.Printf("%d->%d @%d: %d [sB]\n", broadcast_msg.from, broadcast_msg.to, broadcast_msg.ts, broadcast_msg.data)
-	for i, ch_client := range ch_arr {
-
-		if i != broadcast_msg.from && i != 0 { // dont forward to server ororiginator
-			ch_client <- broadcast_msg
-		}
-	}
-}
 func IsBefore(tsA [numEntities]int, tsB [numEntities]int) bool {
 	// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
 	// A-/>B if any A_i > B_i for all i \elem [0, len(A))
@@ -61,55 +23,6 @@ func IsBefore(tsA [numEntities]int, tsB [numEntities]int) bool {
 		}
 	}
 	return true
-}
-
-func (clock *VectorClock) isCV(msg_ts [numEntities]int) bool {
-	// locks clock mutex
-	clock.mu.Lock()
-	// check if before
-	notCV := IsBefore(clock.ts, msg_ts)
-	clock.mu.Unlock()
-	return !notCV
-
-}
-
-func (clock *VectorClock) AdjustClock(ts [numEntities]int, msg_ts [numEntities]int) {
-	clock.mu.Lock()
-
-	// element wise comparison/swap of ts
-	for i := 0; i < numEntities; i++ {
-		if msg_ts[i] > ts[i] {
-			clock.ts[i] = msg_ts[i]
-
-		} else {
-			clock.ts[i] = ts[i]
-		}
-	}
-	// fmt.Printf("\nadjust clock:\n%v\n%v\n\n", ts, clock.ts)
-	clock.mu.Unlock()
-}
-
-func (clock *VectorClock) Inc(id int) {
-	// increment ts for a particular id
-	clock.mu.Lock()
-	clock.ts[id]++
-	clock.mu.Unlock()
-}
-
-func (mailbox *Mailbox) Append(msg Msg) {
-	// append a message to the message array in mailbox
-	mailbox.mu.Lock()
-	mailbox.msg_arr = append(mailbox.msg_arr, msg)
-	mailbox.mu.Unlock()
-}
-func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
-	// assuming mailbox mutex is locked, print each item in the array
-	// using the tabwriter formatting
-	fmt.Fprintln(w, "From\tTo\tTimestamp\tData")
-	for _, msg := range mailbox.msg_arr {
-		fmt.Fprintf(w, "%d\t%d\t%v\t%d\n", msg.from, msg.to, msg.ts, msg.data)
-	}
-	w.Flush()
 }
 
 func server(ch_arr [numEntities]chan Msg) {
