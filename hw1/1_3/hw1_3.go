@@ -31,75 +31,6 @@ type VectorClock struct {
 	ts [numEntities]int
 }
 
-func server(ch_arr [numEntities]chan Msg) {
-	clock := VectorClock{}
-	fmt.Println("start server")
-	for {
-
-		// recieve on public channel
-		in_msg := <-ch_arr[0]
-		// fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
-
-		// increment own clock
-		clock.Inc(server_id)
-
-		// adjust clock
-		clock.AdjustClock(clock.ts, in_msg.ts)
-
-		// flip a coin to send or drop
-		if coinFlip() {
-			// broadcast on private channels
-			go Broadcast(in_msg, ch_arr)
-
-			// increment own clock
-			clock.Inc(server_id)
-
-		} else {
-			// drop msg
-			// fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
-		}
-
-	}
-}
-
-func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mailbox) {
-	clock := VectorClock{}
-	fmt.Printf("start c_%d\n", client_id)
-	go func() {
-		for {
-			// increment own clock
-			clock.Inc(client_id)
-
-			// create message
-			out_msg := Msg{client_id, server_id, clock.ts, rand.Intn(10000)}
-
-			// send on public channel
-			ch_server <- out_msg
-			// fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
-
-			// sleep for nonzero time
-			SleepRand()
-		}
-	}()
-	go func() {
-		for {
-			// recieve on private channel
-			in_msg := <-ch_client
-			// fmt.Printf("%d->%d @%v: %d [rB]\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
-
-			// increment own clock
-			clock.Inc(client_id)
-
-			// adjust clock
-			clock.AdjustClock(clock.ts, in_msg.ts)
-
-			// save message
-			mailbox.Append(in_msg)
-		}
-	}()
-
-}
-
 func coinFlip() bool {
 	return rand.Intn(2) == 1
 }
@@ -107,7 +38,6 @@ func coinFlip() bool {
 func SleepRand() {
 	// sleep sporadically for [1,1000] ms
 	randamt := rand.Intn(1000) + 1
-	// fmt.Printf("sleeping: %d ms\n", randamt)
 	amt := time.Duration(randamt)
 	time.Sleep(time.Millisecond * amt)
 }
@@ -121,6 +51,26 @@ func Broadcast(broadcast_msg Msg, ch_arr [numEntities]chan Msg) {
 			ch_client <- broadcast_msg
 		}
 	}
+}
+func IsBefore(tsA [numEntities]int, tsB [numEntities]int) bool {
+	// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
+	// A-/>B if any A_i > B_i for all i \elem [0, len(A))
+	for k := 0; k < numEntities; k++ {
+		if tsA[k] > tsB[k] {
+			return false
+		}
+	}
+	return true
+}
+
+func (clock *VectorClock) isCV(msg_ts [numEntities]int) bool {
+	// locks clock mutex
+	clock.mu.Lock()
+	// check if before
+	notCV := IsBefore(clock.ts, msg_ts)
+	clock.mu.Unlock()
+	return !notCV
+
 }
 
 func (clock *VectorClock) AdjustClock(ts [numEntities]int, msg_ts [numEntities]int) {
@@ -162,6 +112,78 @@ func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
 	w.Flush()
 }
 
+func server(ch_arr [numEntities]chan Msg) {
+	clock := VectorClock{}
+	fmt.Println("start server")
+	for {
+
+		// recieve on public channel
+		in_msg := <-ch_arr[0]
+
+		// check for causality violation
+		if clock.isCV(in_msg.ts) {
+			fmt.Printf("Causality Violation: %v\n", in_msg)
+		}
+		// increment own clock
+		clock.Inc(server_id)
+
+		// adjust clock
+		clock.AdjustClock(clock.ts, in_msg.ts)
+
+		// flip a coin to send or drop
+		if coinFlip() {
+			// broadcast on private channels
+			go Broadcast(in_msg, ch_arr)
+
+			// increment own clock
+			clock.Inc(server_id)
+
+		}
+
+	}
+}
+
+func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mailbox) {
+	clock := VectorClock{}
+	fmt.Printf("start c_%d\n", client_id)
+	go func() {
+		for {
+			// increment own clock
+			clock.Inc(client_id)
+
+			// create message
+			out_msg := Msg{client_id, server_id, clock.ts, rand.Intn(10000)}
+
+			// send on public channel
+			ch_server <- out_msg
+			// fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
+
+			// sleep for nonzero time
+			SleepRand()
+		}
+	}()
+	go func() {
+		for {
+			// recieve on private channel
+			in_msg := <-ch_client
+
+			// check CV
+			if clock.isCV(in_msg.ts) {
+				fmt.Printf("Causality Violation: %v\n", in_msg)
+			}
+			// increment own clock
+			clock.Inc(client_id)
+
+			// adjust clock
+			clock.AdjustClock(clock.ts, in_msg.ts)
+
+			// save message
+			mailbox.Append(in_msg)
+		}
+	}()
+
+}
+
 func main() {
 
 	// initialize
@@ -193,15 +215,8 @@ func main() {
 	mailbox.mu.Lock()
 
 	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
-		// sort vector clock
-		// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
-		// A-/>B if any A_i > B_i for all i \elem [0, len(A))
-		for k := 0; k < numEntities; k++ {
-			if mailbox.msg_arr[i].ts[k] > mailbox.msg_arr[j].ts[k] {
-				return false
-			}
-		}
-		return true
+		return IsBefore(mailbox.msg_arr[i].ts, mailbox.msg_arr[j].ts)
+
 	})
 
 	// print messages in table

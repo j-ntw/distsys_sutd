@@ -18,8 +18,10 @@
 - we can sort the object.
 
 
+
 ## 1_3
 - currently printf shows msg contents, but we also want to know if its Receive, Transmit or Forward and who did it [also](#1_2)
 - how to sort vector clock?
-    - AdjustClock() needs to be changed
+    - AdjustClock() needs to be changed Done
 - causality violation detection
+- Total order even for concurrent ts
