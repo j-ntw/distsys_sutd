@@ -90,7 +90,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 		for {
 			// receive on private channel
 			in_msg := <-ch_client
-			fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+			fmt.Printf("%d->%d @%d: %d [rB]\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
 			// adjust clock
 			clock.AdjustClock(client_id, clock.ts, in_msg.ts)
