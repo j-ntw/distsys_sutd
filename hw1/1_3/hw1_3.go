@@ -43,7 +43,7 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 		fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
 		// adjust clock
-		clock.AdjustClock(numClients, clock.ts, in_msg.ts)
+		clock.AdjustClock(clock.ts, in_msg.ts)
 
 		// increment own clock
 		clock.Inc(server_id)
@@ -79,7 +79,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 			fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
 
 			// sleep for nonzero time
-			sleepRand()
+			SleepRand()
 		}
 	}()
 	go func() {
@@ -88,7 +88,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 		fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 
 		// adjust clock
-		clock.AdjustClock(client_id, clock.ts, in_msg.ts)
+		clock.AdjustClock(clock.ts, in_msg.ts)
 
 		// increment own clock
 		clock.Inc(client_id)
@@ -103,7 +103,7 @@ func coinFlip() bool {
 	return rand.Intn(2) == 1
 }
 
-func sleepRand() {
+func SleepRand() {
 	//sleep sporadically for [1,1000] * timeDilator ms
 	randamt := rand.Intn(1000) + 1
 	// fmt.Printf("sleeping: %d ms\n", randamt)
@@ -120,31 +120,39 @@ func Broadcast(broadcast_msg Msg, ch_arr [numClients]chan Msg) {
 	}
 }
 
-func (clock *VectorClock) AdjustClock(id int, ts [numEntities]int, msg_ts [numEntities]int) {
+func (clock *VectorClock) AdjustClock(ts [numEntities]int, msg_ts [numEntities]int) {
 	clock.mu.Lock()
-	if msg_ts[id] > ts[id] {
-		fmt.Printf("adjust clock: %v->%v\n", ts, msg_ts)
-		clock.ts = msg_ts
 
-	} else {
-		fmt.Printf("adjust clock: %v->%v\n", ts, ts)
-		clock.ts = ts
+	// element wise comparison/swap of ts
+	for i := 0; i < numEntities; i++ {
+		if msg_ts[i] > ts[i] {
+			clock.ts[i] = msg_ts[i]
+
+		} else {
+
+			clock.ts[i] = ts[i]
+		}
 	}
+	fmt.Printf("adjust clock: %v->%v\n", ts, clock.ts)
 	clock.mu.Unlock()
 }
 
 func (clock *VectorClock) Inc(id int) {
+	// increment ts for a particular id
 	clock.mu.Lock()
 	clock.ts[id]++
 	clock.mu.Unlock()
 }
 
 func (mailbox *Mailbox) Append(msg Msg) {
+	// append a message to the message array in mailbox
 	mailbox.mu.Lock()
 	mailbox.msg_arr = append(mailbox.msg_arr, msg)
 	mailbox.mu.Unlock()
 }
 func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
+	// assuming mailbox mutex is locked, print each item in the array
+	// using the tabwriter formatting
 	fmt.Fprintln(w, "From\tTo\tTimestamp\tData")
 	for _, msg := range mailbox.msg_arr {
 		fmt.Fprintf(w, "%d\t%d\t%d\t%d\n", msg.from, msg.to, msg.ts, msg.data)
@@ -153,6 +161,8 @@ func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
 }
 
 func main() {
+
+	// initialize
 	var ch_arr [numClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
 	var mailbox Mailbox
@@ -169,8 +179,13 @@ func main() {
 	}
 	fmt.Println("create server")
 	go server(ch_arr, ch_server)
+
+	// run while waiting for input
 	var input string
 	fmt.Scanln(&input)
+
+	// this block runs when user enters any input (final button is Enter key)
+	// stops goroutines from adding to mailbox and processes its contents
 
 	// sort messages in mailbox by timestamp
 	mailbox.mu.Lock()
