@@ -1,8 +1,15 @@
 package main
 
 import (
+	"CoinFlip"
+	"SleepRand"
 	"fmt"
 	"math/rand"
+)
+
+const (
+	NumClients  = 10
+	TimeDilator = 10
 )
 
 func server(ch_arr [NumClients]chan Msg, ch_server chan Msg) {
@@ -14,7 +21,7 @@ func server(ch_arr [NumClients]chan Msg, ch_server chan Msg) {
 
 		// flip a coin to send or drop
 		fmt.Printf("server recieve from c_%d: %d\n", in_msg.id, in_msg.data)
-		if CoinFlip() {
+		if CoinFlip.CoinFlip() {
 			go Broadcast(in_msg, ch_arr)
 		} else {
 			fmt.Printf("server drop: c_%d: %d\n", in_msg.id, in_msg.data)
@@ -35,7 +42,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 			ch_server <- out_msg
 
 			fmt.Printf("c_%d send to server: %d\n", out_msg.id, out_msg.data)
-			SleepRand() // do i need to sleep for nonzero time
+			SleepRand.SleepRand() // do i need to sleep for nonzero time
 
 		}
 	}()
