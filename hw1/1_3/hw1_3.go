@@ -1,6 +1,8 @@
 package main
 
 import (
+	"CoinFlip"
+	"SleepRand"
 	"fmt"
 	"math/rand"
 	"os"
@@ -44,7 +46,7 @@ func server(ch_arr [numEntities]chan Msg) {
 		clock.AdjustClock(clock.ts, in_msg.ts)
 
 		// flip a coin to send or drop
-		if coinFlip() {
+		if CoinFlip.CoinFlip() {
 			// broadcast on private channels
 			go Broadcast(in_msg, ch_arr)
 
@@ -72,7 +74,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 			// fmt.Printf("%d->%d @%d: %d\n", out_msg.from, out_msg.to, out_msg.ts, out_msg.data)
 
 			// sleep for nonzero time
-			SleepRand()
+			SleepRand.SleepRand()
 		}
 	}()
 	go func() {

@@ -1,4 +1,4 @@
-package sleeprand
+package SleepRand
 
 import (
 	"math/rand"
