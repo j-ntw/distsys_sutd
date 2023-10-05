@@ -1,8 +1,8 @@
 all:
-	go build hw1_1.go util.go
+	go build hw1_1.go message.go
 runb:
 	./hw1
 runs:
-	go run hw1_1.go util.go
+	go run hw1_1.go message.go
 clean:
 	go clean
