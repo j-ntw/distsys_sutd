@@ -2,37 +2,35 @@
 1005285 Joshua Ng Tze Wee 
 
 ## Requirements
-- Go 1.21
+- Go 1.21.1
 ## 1_1
 
 ### How to run
 ```
-go run hw1/1_1/hw1.go hw1/1_1/util.go
+cd 1_1/
+make runs
 ```
 - Runs clients and server
 
-### How to read output
-#### Syntax
+### Syntax
 ```
 self.id [T]ransmit/[R]ecieve msg.id msg.data 
 -1      Tx                   2        898
 2       Rx                   -1       898
 ```
-#### Location
+### Location
 - stdout
-#### Notes
-- Main function creates array of channels type Msg, 
 
 ## 1_2
 
 ### How to run
 ```
-go run hw1/1_2/hw1_2.go
+cd 1_2/
+make runs
 ```
 - Runs clients and server
 
-### How to read output
-#### Syntax
+### Syntax
 ```
 self.id [T]ransmit/[R]ecieve msg.id msg.data msg.clock
 -1      Tx                   2      898      15
@@ -40,7 +38,23 @@ self.id [T]ransmit/[R]ecieve msg.id msg.data msg.clock
 2       Ad                   nil    nil      15->15
 2       Rx                   -1     898      15
 ```
-#### Location
+### Location
 - stdout
-#### Notes
-- Main function creates array of channels type Msg, 
+
+## 1_3
+
+### How to run
+```
+cd 1_3/
+make runs
+```
+- Runs clients and server
+
+### Syntax
+```
+From To Timestamp Data
+1    -1 2         1750
+...
+```
+### Location
+- stdout

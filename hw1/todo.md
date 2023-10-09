@@ -25,3 +25,6 @@
     - AdjustClock() needs to be changed Done
 - causality violation detection
 - Total order even for concurrent ts
+
+## 2_1
+goroutine may not be suitable for timeout waiting
