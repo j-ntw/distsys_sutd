@@ -12,6 +12,9 @@ const (
 	coordinating
 	following
 	electing
+	awaiting_ack
+	awaiting_victory
+	declaring_victory
 )
 
 type Node struct {
@@ -22,6 +25,7 @@ type Node struct {
 	data        Data
 	mode        Mode
 	cmd         chan Command
+	ack_ch      chan bool
 }
 
 func NewNode(id int) *Node {
@@ -30,7 +34,7 @@ func NewNode(id int) *Node {
 
 func (self *Node) Bully() {
 	if self.id == (len(self.ch_arr) - 1) {
-		self.cmd <- coordinating // todo other mode like victory
+		self.cmd <- coordinating
 		// broadcast victory msg to all
 		self.SendVictoryMsg()
 	} else {
@@ -60,7 +64,7 @@ func (self *Node) listen() {
 		select {
 		case in_msg := <-self.ch:
 
-			switch msg_mode := in_msg.msgtype; msg_mode {
+			switch msgtype := in_msg.msgtype; msgtype {
 			case normal:
 				if self.isMode(following) {
 					self.setData(in_msg.data)
@@ -68,27 +72,34 @@ func (self *Node) listen() {
 					fmt.Printf("n%d: mode%d, why rx msg%d\n", self.id, coordinating, normal)
 					panic(self.id)
 				}
+
 			case election:
 				if self.id > in_msg.from {
 					// if i am bigger send ack to sender
 					// start bully
 					ack_msg := Msg{ack, self.id, in_msg.from, 0, 0}
 					self.ch_arr[in_msg.from] <- ack_msg
-					self.Bully()
+					self.cmd <- electing
 				} else {
 					// if i am smaller, update coordinator to sender.id
 					self.coordinator = in_msg.from
 				}
-			case ack:
-				// todo other msgtypes
 
+			case ack:
+				// stop election process, dont proceed to declaring_victory
+				self.ack_ch <- true
+				self.cmd <- awaiting_victory
+
+			case victory:
+				self.coordinator = in_msg.from
+				self.cmd <- following
 			default:
-				fmt.Printf("msg_mode: %v", msg_mode)
+				fmt.Printf("msgtype: %v", msgtype)
 			}
 
 		case <-time.After(timeout * time.Millisecond):
 			// start election
-			self.Bully()
+			self.cmd <- electing
 			// no default
 		}
 	}
@@ -101,6 +112,8 @@ func (self *Node) Run() {
 	for {
 		// only iterates on next command
 		next_mode := <-self.cmd
+		self.setMode(next_mode)
+
 		switch next_mode {
 		case down:
 			return
@@ -112,6 +125,31 @@ func (self *Node) Run() {
 			// no op, handled in self.listen()
 		case electing:
 			self.Bully()
+		case awaiting_ack:
+			// wait for timeouts
+			select {
+			case <-self.ack_ch:
+				self.cmd <- awaiting_victory
+
+			case <-time.After(timeout * time.Millisecond):
+				// if timeout, declare self as victor
+				self.cmd <- declaring_victory
+			}
+
+		case awaiting_victory:
+			// wait for timeouts
+			select {
+			case <-self.ack_ch:
+				// no op, handled in self.listen()
+
+			case <-time.After(timeout * time.Millisecond):
+				// if timeout, restart election process
+				self.cmd <- electing
+			}
+
+		case declaring_victory:
+			self.SendVictoryMsg()
+
 		default:
 			fmt.Printf("n%d: Unknown mode, shutting down...\n", self.id)
 			self.cmd <- down
@@ -122,6 +160,7 @@ func (self *Node) Run() {
 func (self *Node) Boot() {
 	fmt.Printf("n%d: Booting...\n", self.id)
 	self.ch = self.ch_arr[self.id]
+	self.ack_ch = make(chan bool)
 	self.cmd <- electing
 	go self.Run()
 }

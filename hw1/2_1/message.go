@@ -25,6 +25,7 @@ func (self *Node) SendElectionMsg() {
 		out_msg := Msg{election, self.id, i, 0, 0}
 		other_ch <- out_msg
 	}
+	self.cmd <- awaiting_ack
 }
 
 func (self *Node) SendVictoryMsg() {

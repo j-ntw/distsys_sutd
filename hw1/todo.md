@@ -28,3 +28,6 @@
 - goroutine may not be suitable for timeout waiting
 - does coordinator need to check incoming messages for new coordinator? yes.
     - channel doesnt need mutex i think
+
+- channel needs to send in a goroutine or a dead node will cause the broadcast to block
+- how to wait for timeouts?
