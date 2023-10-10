@@ -29,5 +29,5 @@
 - does coordinator need to check incoming messages for new coordinator? yes.
     - channel doesnt need mutex i think
 
-- channel needs to send in a goroutine or a dead node will cause the broadcast to block
-- how to wait for timeouts?
+- channel needs to send in a goroutine or a dead node will cause the broadcast to block (done)
+- how to wait for timeouts? (done)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -17,6 +18,13 @@ const (
 	declaring_victory
 )
 
+var (
+	bullystates = []Command{electing,
+		awaiting_ack,
+		awaiting_victory,
+		declaring_victory}
+)
+
 type Node struct {
 	ch          chan Msg
 	ch_arr      [numNodes]chan Msg
@@ -25,7 +33,7 @@ type Node struct {
 	data        Data
 	mode        Mode
 	cmd         chan Command
-	ack_ch      chan bool
+	trigger_ch  chan bool
 }
 
 func NewNode(id int) *Node {
@@ -52,7 +60,7 @@ func (self *Node) Broadcast() {
 		data := self.getData()
 		for i, other_ch := range self.ch_arr {
 			out_msg := Msg{normal, self.id, i, 0, data}
-			other_ch <- out_msg
+			go send(other_ch, out_msg)
 		}
 		// sleep periodically
 		time.Sleep(period * time.Millisecond)
@@ -76,23 +84,29 @@ func (self *Node) listen() {
 			case election:
 				if self.id > in_msg.from {
 					// if i am bigger send ack to sender
-					// start bully
+					// start bully if not already bullying
 					ack_msg := Msg{ack, self.id, in_msg.from, 0, 0}
 					self.ch_arr[in_msg.from] <- ack_msg
-					self.cmd <- electing
-				} else {
-					// if i am smaller, update coordinator to sender.id
-					self.coordinator = in_msg.from
+					if !slices.Contains(bullystates, self.getMode()) {
+						self.cmd <- electing
+					}
 				}
 
 			case ack:
 				// stop election process, dont proceed to declaring_victory
-				self.ack_ch <- true
-				self.cmd <- awaiting_victory
+				// subsequent ack messages are consumed but no op
+				if self.isMode(awaiting_ack) {
+					self.trigger_ch <- true
+				}
 
 			case victory:
+				// trigger early exit of timeout
+				if self.isMode(awaiting_victory) {
+					self.trigger_ch <- false
+				}
 				self.coordinator = in_msg.from
 				self.cmd <- following
+
 			default:
 				fmt.Printf("msgtype: %v", msgtype)
 			}
@@ -128,9 +142,14 @@ func (self *Node) Run() {
 		case awaiting_ack:
 			// wait for timeouts
 			select {
-			case <-self.ack_ch:
-				self.cmd <- awaiting_victory
-
+			case value := <-self.trigger_ch:
+				// todo check if a victory message came in while i tried to bully someone
+				if value {
+					self.cmd <- awaiting_victory
+				} else {
+					// no op, victory case in self.listen() has sent "following" command
+					// triggered to avoid timeout
+				}
 			case <-time.After(timeout * time.Millisecond):
 				// if timeout, declare self as victor
 				self.cmd <- declaring_victory
@@ -139,8 +158,9 @@ func (self *Node) Run() {
 		case awaiting_victory:
 			// wait for timeouts
 			select {
-			case <-self.ack_ch:
+			case <-self.trigger_ch:
 				// no op, handled in self.listen()
+				// triggered to avoid timeout
 
 			case <-time.After(timeout * time.Millisecond):
 				// if timeout, restart election process
@@ -160,7 +180,19 @@ func (self *Node) Run() {
 func (self *Node) Boot() {
 	fmt.Printf("n%d: Booting...\n", self.id)
 	self.ch = self.ch_arr[self.id]
-	self.ack_ch = make(chan bool)
+	// clear channel
+L:
+	for {
+		select {
+		case _, ok := <-self.ch:
+			if !ok { //ch is closed //immediately return err
+				break L
+			}
+		default: //all other case not-ready: means nothing in ch for now
+			break L
+		}
+	}
+	self.trigger_ch = make(chan bool)
 	self.cmd <- electing
 	go self.Run()
 }
