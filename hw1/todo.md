@@ -27,4 +27,6 @@
 - Total order even for concurrent ts
 
 ## 2_1
-goroutine may not be suitable for timeout waiting
+- goroutine may not be suitable for timeout waiting
+- does coordinator need to check incoming messages for new coordinator? yes.
+    - channel doesnt need mutex i think
