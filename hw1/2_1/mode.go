@@ -3,12 +3,11 @@ package main
 import "sync"
 
 type Mode struct {
-	mode      int // current mode
-	next_mode int
-	mu        sync.Mutex
+	mode Command // current mode
+	mu   sync.Mutex
 }
 
-func (self *Node) isMode(mode int) bool {
+func (self *Node) isMode(mode Command) bool {
 
 	// check mode
 	self.mode.mu.Lock()
@@ -17,7 +16,8 @@ func (self *Node) isMode(mode int) bool {
 	return state
 
 }
-func (self *Node) getMode() int {
+
+func (self *Node) getMode() Command {
 
 	// get mode
 	self.mode.mu.Lock()
@@ -25,26 +25,11 @@ func (self *Node) getMode() int {
 	self.mode.mu.Unlock()
 	return mode
 }
-func (self *Node) getNextMode() int {
 
-	// get mode
-	self.mode.mu.Lock()
-	next_mode := self.mode.next_mode
-	self.mode.mu.Unlock()
-	return next_mode
-}
-func (self *Node) setMode(mode int) {
+func (self *Node) setMode(mode Command) {
 
 	// set mode
 	self.mode.mu.Lock()
 	self.mode.mode = mode
-	self.mode.mu.Unlock()
-}
-
-func (self *Node) setNextMode(next_mode int) {
-
-	// get mode
-	self.mode.mu.Lock()
-	self.mode.next_mode = next_mode
 	self.mode.mu.Unlock()
 }
