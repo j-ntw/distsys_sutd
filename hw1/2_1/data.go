@@ -11,15 +11,14 @@ func (self *Node) getData() int {
 
 	// get data
 	self.data.mu.Lock()
-	data := self.data.data
-	self.data.mu.Unlock()
-	return data
+	defer self.data.mu.Unlock()
+	return self.data.data
 }
 
 func (self *Node) setData(data int) {
 
 	// set data
 	self.mode.mu.Lock()
+	defer self.data.mu.Unlock()
 	self.data.data = data
-	self.mode.mu.Unlock()
 }

@@ -11,9 +11,8 @@ func (self *Node) isMode(mode Command) bool {
 
 	// check mode
 	self.mode.mu.Lock()
-	state := self.mode.mode == mode
-	self.mode.mu.Unlock()
-	return state
+	defer self.mode.mu.Unlock()
+	return self.mode.mode == mode
 
 }
 
@@ -21,15 +20,15 @@ func (self *Node) getMode() Command {
 
 	// get mode
 	self.mode.mu.Lock()
-	mode := self.mode.mode
-	self.mode.mu.Unlock()
-	return mode
+	defer self.mode.mu.Unlock()
+	return self.mode.mode
 }
 
 func (self *Node) setMode(mode Command) {
 
 	// set mode
 	self.mode.mu.Lock()
+	defer self.mode.mu.Unlock()
 	self.mode.mode = mode
-	self.mode.mu.Unlock()
+
 }
