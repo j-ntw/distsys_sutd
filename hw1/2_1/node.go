@@ -37,7 +37,10 @@ type Node struct {
 }
 
 func NewNode(id int) *Node {
-	return &Node{}
+	return &Node{
+		id:         id,
+		trigger_ch: make(chan bool),
+		cmd:        make(chan Command)}
 }
 
 func (self *Node) Bully() {
@@ -54,10 +57,14 @@ func (self *Node) Bully() {
 func (self *Node) Broadcast() {
 	// continuous broadcast while coordinating
 	for {
+		// if change mode, then break this loop
 		if !self.isMode(coordinating) {
+			fmt.Printf("n%d: stop broadcast\n", self.id)
 			return
 		}
+		// else coordinating
 		data := self.getData()
+		fmt.Printf("n%d: do broadcast\n", self.id)
 		for i, other_ch := range self.ch_arr {
 			out_msg := Msg{normal, self.id, i, 0, data}
 			go send(other_ch, out_msg)
@@ -68,6 +75,8 @@ func (self *Node) Broadcast() {
 }
 
 func (self *Node) listen() {
+	// listens for msg from other nodes
+	fmt.Printf("n%d: start listen\n", self.id)
 	for {
 		select {
 		case in_msg := <-self.ch:
@@ -124,11 +133,14 @@ func (self *Node) Run() {
 
 	// main node loop
 	for {
+
 		// only iterates on next command
 		next_mode := <-self.cmd
+		fmt.Printf("n%d: %d->%d \n", self.id, self.getMode(), next_mode)
 		self.setMode(next_mode)
 
 		switch next_mode {
+
 		case down:
 			return
 		case coordinating:
@@ -138,7 +150,7 @@ func (self *Node) Run() {
 		case following:
 			// no op, handled in self.listen()
 		case electing:
-			self.Bully()
+			go self.Bully()
 		case awaiting_ack:
 			// wait for timeouts
 			select {
@@ -192,6 +204,11 @@ func (self *Node) Boot() {
 	// 			break L
 	// 		}
 	// 	}
-	self.cmd <- electing
+	fmt.Printf("n%d: electing...\n", self.id)
+	go func() {
+		self.cmd <- electing
+	}()
+
+	fmt.Printf("n%d: running...\n", self.id)
 	go self.Run()
 }

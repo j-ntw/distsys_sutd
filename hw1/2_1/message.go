@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Msg struct {
 	msgtype Msgtype
 	from    int
@@ -25,6 +27,7 @@ func send(ch chan Msg, msg Msg) {
 
 func (self *Node) SendElectionMsg() {
 	// broadcast victory msg to all ids larger than itself
+	fmt.Printf("n%d: SendElectionMsg\n", self.id)
 	for i, other_ch := range self.ch_arr[self.id+1:] {
 		out_msg := Msg{election, self.id, i, 0, 0}
 		go send(other_ch, out_msg)
@@ -34,6 +37,7 @@ func (self *Node) SendElectionMsg() {
 
 func (self *Node) SendVictoryMsg() {
 	// broadcast election message to all and wait
+	fmt.Printf("n%d: SendVictoryMsg\n", self.id)
 	for i, other_ch := range self.ch_arr {
 		out_msg := Msg{victory, self.id, i, 0, 0}
 		go send(other_ch, out_msg)

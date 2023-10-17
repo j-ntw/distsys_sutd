@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "fmt"
 
 const (
 	numNodes = 10
@@ -16,18 +14,16 @@ func main() {
 	var node_arr [numNodes]Node
 
 	// make channels
-	
+
 	for i := range ch_arr {
 		ch_arr[i] = make(chan Msg)
 		node_arr[i] = *NewNode(i)
-		node_arr[i].cmd = make(chan Command)
-		node_arr[i].trigger_ch = make(chan bool)
 	}
 
 	// boot nodes, try to elect self, election done
 	for i := range node_arr {
 		node_arr[i].ch_arr = ch_arr
-		node_arr[i].Boot()
+		go node_arr[i].Boot()
 	}
 	// start syncing
 
@@ -35,15 +31,18 @@ func main() {
 	// let run for awhile
 	// todo kill coordinator
 
+	// var input string
+	// run while waiting for input
 	var input string
-	go func() {
-		for {
-			fmt.Scanln(&input)
-			switch command := input; command {
-			case "exit":
-				return
-			}
-		}
-	}()
+	fmt.Scanln(&input)
+	// go func() {
+	// 	for {
+	// 		fmt.Scanln(&input)
+	// 		switch command := input; command {
+	// 		case "exit":
+	// 			return
+	// 		}
+	// 	}
+	// }()
 
 }
