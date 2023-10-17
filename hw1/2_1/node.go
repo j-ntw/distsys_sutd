@@ -24,6 +24,7 @@ var (
 		awaiting_victory,
 		declaring_victory}
 )
+var flag string
 
 type Node struct {
 	ch          chan Msg
@@ -47,6 +48,16 @@ func NewNode(id int) *Node {
 }
 
 func (self *Node) Bully() {
+	if flag == "-w" {
+		self.BullyWorst()
+	} else if flag == "-b" {
+		self.BullyBest()
+	} else {
+		self.BullyNormal()
+	}
+}
+
+func (self *Node) BullyNormal() {
 	// bully election
 	if self.id == (len(self.ch_arr) - 1) {
 		self.cmd <- coordinating
@@ -55,6 +66,21 @@ func (self *Node) Bully() {
 	} else {
 		// broadcast election message to all and wait
 		self.SendElectionMsg()
+	}
+}
+func (self *Node) BullyWorst() {
+	// bully election (worst case)
+	// time.Sleep(time.Duration(self.id*100) * time.Millisecond)
+	// broadcast election message to all and wait
+	self.SendElectionMsg()
+
+}
+func (self *Node) BullyBest() {
+	// bully election
+	if self.id == (len(self.ch_arr) - 1) {
+		self.cmd <- coordinating
+		// broadcast victory msg to all
+		self.SendVictoryMsg()
 	}
 }
 
@@ -112,6 +138,7 @@ func (self *Node) listen() {
 			case ack:
 				// stop election process, dont proceed to declaring_victory
 				// subsequent ack messages are consumed but no op
+				fmt.Printf("n%d: ack from %d\n", self.id, in_msg.from)
 				if self.isMode(awaiting_ack) {
 					self.trigger_ch <- true
 				}
@@ -129,8 +156,14 @@ func (self *Node) listen() {
 			}
 
 		case <-time.After(timeout * time.Millisecond):
-			// start election
-			self.cmd <- electing
+			// if self.isMode(following) {
+			// 	// start election
+			// 	self.cmd <- electing
+			// }
+			if !self.isMode(coordinating) {
+				self.cmd <- electing
+			}
+
 		}
 	}
 }

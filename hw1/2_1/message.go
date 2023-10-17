@@ -30,10 +30,8 @@ func (self *Node) SendElectionMsg() {
 	fmt.Printf("n%d: SendElectionMsg\n", self.id)
 	// do not send to self
 	for i, other_ch := range self.ch_arr[self.id+1:] {
-		if i != self.id {
-			out_msg := Msg{election, self.id, i, 0, 0}
-			go send(other_ch, out_msg)
-		}
+		out_msg := Msg{election, self.id, i, 0, 0}
+		go send(other_ch, out_msg)
 
 	}
 	self.cmd <- awaiting_ack

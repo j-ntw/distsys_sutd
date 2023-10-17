@@ -1,14 +1,19 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 const (
 	numNodes        = 10
 	timeout         = 1000 // timeout to wait for messages from other nodes
-	broadcast_delay = 1100 // broadcast delay period
+	broadcast_delay = 500  // broadcast delay period
 )
 
 func main() {
+	handleArgs()
+
 	// create nodes, channels
 	var ch_arr [numNodes]chan Msg
 	var node_arr [numNodes]Node
@@ -35,4 +40,12 @@ func main() {
 		}
 	}
 
+}
+
+func handleArgs() {
+	args := os.Args[1:]
+	if len(args) > 0 {
+		flag = os.Args[1]
+		fmt.Printf("flag: %v\n", flag)
+	}
 }
