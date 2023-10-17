@@ -18,7 +18,7 @@ func (self *Node) getData() int {
 func (self *Node) setData(data int) {
 
 	// set data
-	self.mode.mu.Lock()
+	self.data.mu.Lock()
 	defer self.data.mu.Unlock()
 	self.data.data = data
 }
