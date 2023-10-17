@@ -42,7 +42,7 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 
 		} else {
 			// todo change drop
-			fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+			fmt.Printf("s drop: '%d->%d @%d: %d'\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 		}
 
 	}
@@ -90,7 +90,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 func main() {
 	var ch_arr [numClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
-	var mailbox Mailbox
+	var mailbox Mailbox // send events to mailbox to print out later
 
 	fmt.Println("create clients")
 	for i := range ch_arr {

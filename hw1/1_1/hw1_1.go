@@ -20,18 +20,18 @@ func server(ch_arr [NumClients]chan Msg, ch_server chan Msg) {
 		in_msg := <-ch_server
 
 		// flip a coin to send or drop
-		fmt.Printf("server recieve from c_%d: %d\n", in_msg.id, in_msg.data)
+		fmt.Printf("s->%d: %d\n", in_msg.id, in_msg.data)
 		if CoinFlip.CoinFlip() {
 			go Broadcast(in_msg, ch_arr)
 		} else {
-			fmt.Printf("server drop: c_%d: %d\n", in_msg.id, in_msg.data)
+			fmt.Printf("s drop: %d: %d\n", in_msg.id, in_msg.data)
 		}
 
 	}
 }
 
 func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
-	fmt.Printf("start c_%d\n", client_id)
+	fmt.Printf("start %d\n", client_id)
 	go func() {
 		for {
 
@@ -41,8 +41,8 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 			// send on public channel
 			ch_server <- out_msg
 
-			fmt.Printf("c_%d send to server: %d\n", out_msg.id, out_msg.data)
-			SleepRand.SleepRand() // do i need to sleep for nonzero time
+			fmt.Printf("%d->s: %d\n", out_msg.id, out_msg.data)
+			SleepRand.SleepRand() // sleep for nonzero time
 
 		}
 	}()
@@ -50,7 +50,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 		for {
 			// recieve on private channel
 			in_msg := <-ch_client
-			fmt.Printf("c_%d recieve from c_%d: %d\n", client_id, in_msg.id, in_msg.data)
+			fmt.Printf("%d->%d: %d\n", in_msg.id, client_id, in_msg.data)
 		}
 	}()
 }
@@ -58,7 +58,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg) {
 func main() {
 	var ch_arr [NumClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
-	// w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, '.', tabwriter.AlignRight|tabwriter.Debug)
+
 	fmt.Println("create clients")
 	for i := range ch_arr {
 		// make a channel of type Msg
