@@ -14,11 +14,11 @@ type Msg struct {
 type Msgtype int
 
 const ( // iota is reset to 0
-	election     Msgtype = iota // election == 0
-	broadcast                   // broadcast == 1
-	coordination                // coordination == 2
-	victory                     // victory == 3
-	ack
+	election     Msgtype = iota //  0
+	broadcast                   //  1
+	coordination                //  2
+	victory                     //  3
+	ack                         //  4
 )
 
 func send(ch chan Msg, msg Msg) {

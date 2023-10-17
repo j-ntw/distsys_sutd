@@ -3,17 +3,15 @@ package main
 import "fmt"
 
 const (
-	numNodes = 10
-	timeout  = 1000
-	period   = 500
+	numNodes        = 10
+	timeout         = 1000 // timeout to wait for messages from other nodes
+	broadcast_delay = 1100 // broadcast delay period
 )
 
 func main() {
-	// creates nodes
+	// create nodes, channels
 	var ch_arr [numNodes]chan Msg
 	var node_arr [numNodes]Node
-
-	// make channels
 
 	for i := range ch_arr {
 		ch_arr[i] = make(chan Msg)
@@ -25,16 +23,9 @@ func main() {
 		node_arr[i].ch_arr = ch_arr
 		go node_arr[i].Boot()
 	}
-	// start syncing
 
-	// launch a monitor
-	// let run for awhile
-	// todo kill coordinator
-
-	// var input string
 	// run while waiting for input
 	var input string
-	// fmt.Scanln(&input)
 
 	for {
 		fmt.Scanln(&input)

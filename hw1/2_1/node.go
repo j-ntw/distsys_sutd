@@ -9,13 +9,13 @@ import (
 type Command int
 
 const (
-	down Command = iota
-	coordinating
-	following
-	electing
-	awaiting_ack
-	awaiting_victory
-	declaring_victory
+	down              Command = iota //  0
+	coordinating                     //  1
+	following                        //  2
+	electing                         //  3
+	awaiting_ack                     //  4
+	awaiting_victory                 //  5
+	declaring_victory                //  6
 )
 
 var (
@@ -37,6 +37,9 @@ type Node struct {
 }
 
 func NewNode(id int) *Node {
+	// create and return a new node
+	// other details like coordinator, data and mode are left as default
+	// ch and ch_arr are assigned in the main program for loop
 	return &Node{
 		id:         id,
 		trigger_ch: make(chan bool),
@@ -44,6 +47,7 @@ func NewNode(id int) *Node {
 }
 
 func (self *Node) Bully() {
+	// bully election
 	if self.id == (len(self.ch_arr) - 1) {
 		self.cmd <- coordinating
 		// broadcast victory msg to all
@@ -73,7 +77,7 @@ func (self *Node) Broadcast() {
 			}
 		}
 		// sleep periodically
-		time.Sleep(period * time.Millisecond)
+		time.Sleep(broadcast_delay * time.Millisecond)
 	}
 }
 
@@ -90,8 +94,8 @@ func (self *Node) listen() {
 					// fmt.Printf("n%d: mode%d, why rx msg%d\n", self.id, coordinating, broadcast)
 					self.setData(in_msg.data)
 				} else {
-					fmt.Printf("n%d: mode%d, why rx msg%d from %d\n", self.id, coordinating, broadcast, in_msg.from)
-					panic(self.id)
+					fmt.Printf("n%d: mode%d, ignore rx msg%d from %d\n", self.id, coordinating, broadcast, in_msg.from)
+
 				}
 
 			case election:
@@ -127,7 +131,6 @@ func (self *Node) listen() {
 		case <-time.After(timeout * time.Millisecond):
 			// start election
 			self.cmd <- electing
-			// no default
 		}
 	}
 }
@@ -158,11 +161,12 @@ func (self *Node) Run() {
 		case awaiting_ack:
 			// wait for timeouts
 			select {
-			case value := <-self.trigger_ch:
-				// todo check if a victory message came in while i tried to bully someone
-				if value {
+			case gotAcked := <-self.trigger_ch:
+				// if an ack message came in while i tried to bully someone
+				if gotAcked {
 					self.cmd <- awaiting_victory
 				} else {
+					//if a victory message came in while i tried to bully someone
 					// no op, victory case in self.listen() has sent "following" command
 					// triggered to avoid timeout
 				}
@@ -184,7 +188,7 @@ func (self *Node) Run() {
 			}
 
 		case declaring_victory:
-			self.SendVictoryMsg()
+			go self.SendVictoryMsg()
 
 		default:
 			fmt.Printf("n%d: Unknown mode, shutting down...\n", self.id)
