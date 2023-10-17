@@ -16,9 +16,12 @@ func main() {
 	var node_arr [numNodes]Node
 
 	// make channels
+	
 	for i := range ch_arr {
 		ch_arr[i] = make(chan Msg)
 		node_arr[i] = *NewNode(i)
+		node_arr[i].cmd = make(chan Command)
+		node_arr[i].trigger_ch = make(chan bool)
 	}
 
 	// boot nodes, try to elect self, election done

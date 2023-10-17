@@ -181,18 +181,17 @@ func (self *Node) Boot() {
 	fmt.Printf("n%d: Booting...\n", self.id)
 	self.ch = self.ch_arr[self.id]
 	// clear channel
-L:
-	for {
-		select {
-		case _, ok := <-self.ch:
-			if !ok { //ch is closed //immediately return err
-				break L
-			}
-		default: //all other case not-ready: means nothing in ch for now
-			break L
-		}
-	}
-	self.trigger_ch = make(chan bool)
+	// L:
+	// 	for {
+	// 		select {
+	// 		case _, ok := <-self.ch:
+	// 			if !ok { //ch is closed //immediately return err
+	// 				break L
+	// 			}
+	// 		default: //all other case not-ready: means nothing in ch for now
+	// 			break L
+	// 		}
+	// 	}
 	self.cmd <- electing
 	go self.Run()
 }
