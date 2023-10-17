@@ -34,15 +34,14 @@ func main() {
 	// var input string
 	// run while waiting for input
 	var input string
-	fmt.Scanln(&input)
-	// go func() {
-	// 	for {
-	// 		fmt.Scanln(&input)
-	// 		switch command := input; command {
-	// 		case "exit":
-	// 			return
-	// 		}
-	// 	}
-	// }()
+	// fmt.Scanln(&input)
+
+	for {
+		fmt.Scanln(&input)
+		switch command := input; command {
+		case "exit":
+			return
+		}
+	}
 
 }

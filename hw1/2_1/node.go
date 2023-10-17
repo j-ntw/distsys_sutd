@@ -66,8 +66,11 @@ func (self *Node) Broadcast() {
 		data := self.getData()
 		fmt.Printf("n%d: do broadcast\n", self.id)
 		for i, other_ch := range self.ch_arr {
-			out_msg := Msg{normal, self.id, i, 0, data}
-			go send(other_ch, out_msg)
+			// do not send to self
+			if i != self.id {
+				out_msg := Msg{broadcast, self.id, i, 0, data}
+				go send(other_ch, out_msg)
+			}
 		}
 		// sleep periodically
 		time.Sleep(period * time.Millisecond)
@@ -82,11 +85,12 @@ func (self *Node) listen() {
 		case in_msg := <-self.ch:
 
 			switch msgtype := in_msg.msgtype; msgtype {
-			case normal:
+			case broadcast:
 				if self.isMode(following) {
+					// fmt.Printf("n%d: mode%d, why rx msg%d\n", self.id, coordinating, broadcast)
 					self.setData(in_msg.data)
 				} else {
-					fmt.Printf("n%d: mode%d, why rx msg%d\n", self.id, coordinating, normal)
+					fmt.Printf("n%d: mode%d, why rx msg%d from %d\n", self.id, coordinating, broadcast, in_msg.from)
 					panic(self.id)
 				}
 
