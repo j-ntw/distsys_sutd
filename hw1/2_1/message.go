@@ -26,7 +26,7 @@ func send(ch chan Msg, msg Msg) {
 }
 
 func (self *Node) SendElectionMsg() {
-	// broadcast victory msg to all ids larger than itself
+	// broadcast election msg to all ids larger than itself
 	fmt.Printf("n%d: SendElectionMsg\n", self.id)
 	// do not send to self
 	for i, other_ch := range self.ch_arr[self.id+1:] {
@@ -38,7 +38,7 @@ func (self *Node) SendElectionMsg() {
 }
 
 func (self *Node) SendVictoryMsg() {
-	// broadcast election message to all and wait
+	// broadcast victory message to all and wait
 	fmt.Printf("n%d: SendVictoryMsg\n", self.id)
 	for i, other_ch := range self.ch_arr {
 		// do not send to self

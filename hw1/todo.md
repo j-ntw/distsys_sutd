@@ -31,3 +31,9 @@
 
 - channel needs to send in a goroutine or a dead node will cause the broadcast to block (done)
 - how to wait for timeouts? (done)
+
+
+## troubleshooting
+- bully worst and bully normal
+    - symptoms: some nodes dont seeme to respond to victory message, elect themselves and nobody responds to them 
+    - node 9 sends the victory message so early that 

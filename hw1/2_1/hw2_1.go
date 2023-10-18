@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	numNodes        = 10
+	numNodes        = 4
 	timeout         = 1000 // timeout to wait for messages from other nodes
 	broadcast_delay = 500  // broadcast delay period
 )

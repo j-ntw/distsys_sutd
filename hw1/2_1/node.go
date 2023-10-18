@@ -148,8 +148,14 @@ func (self *Node) listen() {
 				if self.isMode(awaiting_victory) {
 					self.trigger_ch <- false
 				}
-				self.coordinator = in_msg.from
-				self.cmd <- following
+				// check if you are bigger than them
+				if self.id > in_msg.from {
+					self.cmd <- electing
+
+				} else {
+					self.coordinator = in_msg.from
+					self.cmd <- following
+				}
 
 			default:
 				fmt.Printf("msgtype: %v", msgtype)
@@ -160,6 +166,9 @@ func (self *Node) listen() {
 			// 	// start election
 			// 	self.cmd <- electing
 			// }
+
+			// if you dont get a message within timeout and youre not the coordinator, bully again.
+			// because coordinator in a stable system doesnt get any message, there's no
 			if !self.isMode(coordinating) {
 				self.cmd <- electing
 			}
