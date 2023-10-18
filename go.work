@@ -1,9 +1,11 @@
 go 1.21.1
 
 use (
+	./hw1
 	./hw1/1_1
 	./hw1/1_2
 	./hw1/1_3
+	./hw1/2_1
 	./hw1/CoinFlip
 	./hw1/SleepRand
 )

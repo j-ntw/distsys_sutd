@@ -8,18 +8,16 @@ type VectorClock struct {
 }
 
 func (clock *VectorClock) isCV(msg_ts [numEntities]int) bool {
-	// locks clock mutex
-	clock.mu.Lock()
-	// check if before
-	notCV := IsBefore(clock.ts, msg_ts)
-	clock.mu.Unlock()
-	return !notCV
 
+	clock.mu.Lock()
+	defer clock.mu.Unlock()
+	// check if before
+	return !IsBefore(clock.ts, msg_ts)
 }
 
 func (clock *VectorClock) AdjustClock(ts [numEntities]int, msg_ts [numEntities]int) {
 	clock.mu.Lock()
-
+	defer clock.mu.Unlock()
 	// element wise comparison/swap of ts
 	for i := 0; i < numEntities; i++ {
 		if msg_ts[i] > ts[i] {
@@ -30,12 +28,13 @@ func (clock *VectorClock) AdjustClock(ts [numEntities]int, msg_ts [numEntities]i
 		}
 	}
 	// fmt.Printf("\nadjust clock:\n%v\n%v\n\n", ts, clock.ts)
-	clock.mu.Unlock()
+
 }
 
 func (clock *VectorClock) Inc(id int) {
 	// increment ts for a particular id
 	clock.mu.Lock()
+	defer clock.mu.Unlock()
 	clock.ts[id]++
-	clock.mu.Unlock()
+
 }

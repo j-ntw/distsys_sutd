@@ -41,8 +41,8 @@ func server(ch_arr [numClients]chan Msg, ch_server chan Msg) {
 			clock.Inc() //* serverClock
 
 		} else {
-			// todo change drop
-			fmt.Printf("%d->%d @%d: %d\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
+			// drop
+			fmt.Printf("s drop: '%d->%d @%d: %d'\n", in_msg.from, in_msg.to, in_msg.ts, in_msg.data)
 		}
 
 	}
@@ -90,7 +90,7 @@ func client(ch_client chan Msg, client_id int, ch_server chan Msg, mailbox *Mail
 func main() {
 	var ch_arr [numClients]chan Msg
 	var ch_server chan Msg = make(chan Msg)
-	var mailbox Mailbox
+	var mailbox Mailbox // send events to mailbox to print out later
 
 	fmt.Println("create clients")
 	for i := range ch_arr {
@@ -108,6 +108,7 @@ func main() {
 
 	// sort messages in mailbox by timestamp
 	mailbox.mu.Lock()
+	defer mailbox.mu.Unlock()
 	sort.Slice(mailbox.msg_arr, func(i, j int) bool {
 		return mailbox.msg_arr[i].ts < mailbox.msg_arr[j].ts
 	})
@@ -115,6 +116,5 @@ func main() {
 	// print messages in table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 	mailbox.PrintWhileLocked(w)
-	mailbox.mu.Unlock()
 	fmt.Println("Done")
 }
