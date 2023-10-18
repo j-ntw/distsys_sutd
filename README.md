@@ -3,6 +3,7 @@
 
 ## Requirements
 - Go 1.21.1
+- "text/tabwriter" package for 1_2 and 1_3, used to format output
 ## 1_1
 
 ### How to run
@@ -14,9 +15,11 @@ make runs
 
 ### Syntax
 ```
-self.id [T]ransmit/[R]ecieve msg.id msg.data 
--1      Tx                   2        898
-2       Rx                   -1       898
+s->4: 3839 // server send to client 4, data == 3839
+s broadcast: 4: 3839 // server broadcast 4's message containing data payload == 3839
+
+From To Timestamp Data
+id   id ts        Data
 ```
 ### Location
 - stdout
@@ -32,11 +35,12 @@ make runs
 
 ### Syntax
 ```
-self.id [T]ransmit/[R]ecieve msg.id msg.data msg.clock
--1      Tx                   2      898      15
-2       Rx                   -1     898      15
-2       Ad                   nil    nil      15->15
-2       Rx                   -1     898      15
+client_id->-1 @LamportClock: Data                // sending message syntax
+adjust clock_some_id: LamportClock->LamportClock // adjust clock
+s drop: '6->-1 @44: 7462'                        // server drop message
+
+From To Timestamp Data
+id   id ts        Data
 ```
 ### Location
 - stdout
@@ -53,8 +57,9 @@ make runs
 ### Syntax
 ```
 Causality Violation: {from_id to_id [VectorClock] Data}
-From To Timestamp Data
-1    -1 2         1750
+From                To                  Timestamp               Data
+from_id             to_id               [VectorClock]           Data
+
 ...
 ```
 ### Location
