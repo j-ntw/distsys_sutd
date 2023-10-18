@@ -14,8 +14,9 @@ type Mailbox struct {
 func (mailbox *Mailbox) Append(msg Msg) {
 	// append a message to the message array in mailbox
 	mailbox.mu.Lock()
+	defer mailbox.mu.Unlock()
 	mailbox.msg_arr = append(mailbox.msg_arr, msg)
-	mailbox.mu.Unlock()
+
 }
 func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
 	// assuming mailbox mutex is locked, print each item in the array

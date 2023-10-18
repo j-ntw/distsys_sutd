@@ -128,7 +128,7 @@ func main() {
 
 	// sort messages in mailbox by timestamp
 	mailbox.mu.Lock()
-
+	defer mailbox.mu.Unlock()
 	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
 		return IsBefore(mailbox.msg_arr[i].ts, mailbox.msg_arr[j].ts)
 
@@ -137,6 +137,5 @@ func main() {
 	// print messages in table
 	w := tabwriter.NewWriter(os.Stdout, 20, 0, 1, ' ', 0)
 	mailbox.PrintWhileLocked(w)
-	mailbox.mu.Unlock()
 	fmt.Println("Done")
 }

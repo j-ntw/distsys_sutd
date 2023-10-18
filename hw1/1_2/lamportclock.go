@@ -12,6 +12,7 @@ type LamportClock struct {
 
 func (clock *LamportClock) AdjustClock(id int, ts int, msg_ts int) {
 	clock.mu.Lock()
+	defer clock.mu.Unlock()
 	if msg_ts > ts {
 		fmt.Printf("adjust clock_%d: %d->%d\n", id, ts, msg_ts)
 		clock.ts = msg_ts
@@ -20,12 +21,11 @@ func (clock *LamportClock) AdjustClock(id int, ts int, msg_ts int) {
 		fmt.Printf("adjust clock_%d: %d->%d\n", id, ts, ts)
 		clock.ts = ts
 	}
-	clock.mu.Unlock()
 
 }
 
 func (clock *LamportClock) Inc() {
 	clock.mu.Lock()
+	defer clock.mu.Unlock()
 	clock.ts++
-	clock.mu.Unlock()
 }

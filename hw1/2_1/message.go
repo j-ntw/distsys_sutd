@@ -39,6 +39,27 @@ func (self *Node) SendElectionMsg() {
 
 func (self *Node) SendVictoryMsg() {
 	// broadcast victory message to all and wait
+	if flag == "-f" && self.id == (numNodes-1) {
+		self.SendVictoryMsgFailure()
+		self.cmd <- down
+	} else {
+		self.SendVictoryMsgNormal()
+	}
+}
+
+func (self *Node) SendVictoryMsgNormal() {
+	// broadcast victory message to all and wait
+	fmt.Printf("n%d: SendVictoryMsg\n", self.id)
+	for i, other_ch := range self.ch_arr {
+		// do not send to self
+		if i != self.id {
+			out_msg := Msg{victory, self.id, i, 0, 0}
+			go send(other_ch, out_msg)
+		}
+	}
+}
+func (self *Node) SendVictoryMsgFailure() {
+	// broadcast victory message to all and wait
 	fmt.Printf("n%d: SendVictoryMsg\n", self.id)
 	for i, other_ch := range self.ch_arr {
 		// do not send to self

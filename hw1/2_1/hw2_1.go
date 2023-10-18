@@ -2,18 +2,19 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 )
 
 const (
 	numNodes        = 4
-	timeout         = 1000 // timeout to wait for messages from other nodes
-	broadcast_delay = 500  // broadcast delay period
+	timeout         = 1500 // timeout to wait for messages from other nodes
+	broadcast_delay = 1400 // broadcast delay period
+
 )
 
 func main() {
 	handleArgs()
-
 	// create nodes, channels
 	var ch_arr [numNodes]chan Msg
 	var node_arr [numNodes]Node
@@ -31,10 +32,13 @@ func main() {
 
 	// run while waiting for input
 	var input string
-
+	// fmt.Scanln(&input)
 	for {
 		fmt.Scanln(&input)
 		switch command := input; command {
+		case "smite":
+			// choose random node to die
+			dead_node = rand.Intn(numNodes)
 		case "exit":
 			return
 		}

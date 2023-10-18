@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"slices"
 	"time"
 )
 
@@ -19,12 +18,14 @@ const (
 )
 
 var (
-	bullystates = []Command{electing,
+	bullystates = []Command{
+		electing,
 		awaiting_ack,
 		awaiting_victory,
 		declaring_victory}
 )
 var flag string
+var dead_node = -1
 
 type Node struct {
 	ch          chan Msg
@@ -71,7 +72,7 @@ func (self *Node) BullyNormal() {
 func (self *Node) BullyWorst() {
 	// bully election (worst case)
 	// time.Sleep(time.Duration(self.id*100) * time.Millisecond)
-	// broadcast election message to all and wait
+	// broadcast election message to all larger and wait
 	self.SendElectionMsg()
 
 }
@@ -130,7 +131,7 @@ func (self *Node) listen() {
 					// start bully if not already bullying
 					ack_msg := Msg{ack, self.id, in_msg.from, 0, 0}
 					self.ch_arr[in_msg.from] <- ack_msg
-					if !slices.Contains(bullystates, self.getMode()) {
+					if self.getMode() < electing {
 						self.cmd <- electing
 					}
 				}
@@ -162,14 +163,10 @@ func (self *Node) listen() {
 			}
 
 		case <-time.After(timeout * time.Millisecond):
-			// if self.isMode(following) {
-			// 	// start election
-			// 	self.cmd <- electing
-			// }
-
 			// if you dont get a message within timeout and youre not the coordinator, bully again.
 			// because coordinator in a stable system doesnt get any message, there's no
-			if !self.isMode(coordinating) {
+			if self.isMode(following) {
+				fmt.Printf("n%d: listen timeout\n", self.id)
 				self.cmd <- electing
 			}
 
@@ -182,7 +179,11 @@ func (self *Node) Run() {
 
 	// main node loop
 	for {
-
+		if self.id == dead_node {
+			go func() {
+				self.cmd <- down
+			}()
+		}
 		// only iterates on next command
 		next_mode := <-self.cmd
 		fmt.Printf("n%d: %d->%d \n", self.id, self.getMode(), next_mode)
@@ -191,6 +192,7 @@ func (self *Node) Run() {
 		switch next_mode {
 
 		case down:
+			fmt.Printf("n%d: shutdown\n\n\n\n\n", self.id)
 			return
 		case coordinating:
 			self.coordinator = self.id
@@ -201,35 +203,55 @@ func (self *Node) Run() {
 		case electing:
 			go self.Bully()
 		case awaiting_ack:
-			// wait for timeouts
-			select {
-			case gotAcked := <-self.trigger_ch:
-				// if an ack message came in while i tried to bully someone
-				if gotAcked {
-					self.cmd <- awaiting_victory
-				} else {
-					//if a victory message came in while i tried to bully someone
-					// no op, victory case in self.listen() has sent "following" command
-					// triggered to avoid timeout
-				}
-			case <-time.After(timeout * time.Millisecond):
-				// if timeout, declare self as victor
-				self.cmd <- declaring_victory
+			if self.id == (numNodes-2) && flag == "-ff" {
+				// The failed node is not the newly elected coordinator
+				go func() {
+					self.cmd <- down
+				}()
+
+			} else {
+				// wait for timeouts
+				go func() {
+					select {
+					case gotAcked := <-self.trigger_ch:
+						// if an ack message came in while i tried to bully someone
+						if gotAcked {
+							self.cmd <- awaiting_victory
+						} else {
+							//if a victory message came in while i tried to bully someone
+							// no op, victory case in self.listen() has sent "following" command
+							// triggered to avoid timeout
+						}
+					case <-time.After(timeout * time.Millisecond):
+						fmt.Printf("n%d: ack timeout\n", self.id)
+						// if timeout, declare self as victor
+
+						self.cmd <- declaring_victory
+
+					}
+				}()
 			}
 
 		case awaiting_victory:
 			// wait for timeouts
-			select {
-			case <-self.trigger_ch:
-				// no op, handled in self.listen()
-				// triggered to avoid timeout
+			go func() {
+				select {
+				case <-self.trigger_ch:
+					// no op, handled in self.listen()
+					// triggered to avoid timeout
 
-			case <-time.After(timeout * time.Millisecond):
-				// if timeout, restart election process
-				self.cmd <- electing
-			}
+				case <-time.After(timeout * time.Millisecond):
+					// if timeout, restart election process
+					fmt.Printf("n%d: vict timeout\n", self.id)
+					self.cmd <- electing
+				}
+			}()
 
 		case declaring_victory:
+			go func() {
+				self.cmd <- coordinating
+			}()
+
 			go self.SendVictoryMsg()
 
 		default:

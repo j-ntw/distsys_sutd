@@ -37,3 +37,6 @@
 - bully worst and bully normal
     - symptoms: some nodes dont seeme to respond to victory message, elect themselves and nobody responds to them 
     - node 9 sends the victory message so early that 
+
+- the problem with using command channel to send commands is every command must be processed fully before going to the next command.
+- if we use the command channel as an observer to only notify when there is a new command and stop the previous command, then its ok
