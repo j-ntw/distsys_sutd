@@ -5,14 +5,15 @@ import "fmt"
 // implement lamports shared priority queue with vector clock
 
 const (
-	numNodes = 10
+	numNodes = 3
 )
+
+var ch_arr [numNodes]chan Msg
+var node_arr [numNodes]Node
 
 // all machines are connected to all other machines (use channels)
 func main() {
 	// create nodes, channels
-	var ch_arr [numNodes]chan Msg
-	var node_arr [numNodes]Node
 
 	for i := range ch_arr {
 		ch_arr[i] = make(chan Msg)

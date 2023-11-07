@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type Msg struct {
 	msgtype Msgtype
 	from    int
@@ -17,6 +19,6 @@ const ( // iota is reset to 0
 )
 
 func send(ch chan Msg, msg Msg) {
+	fmt.Printf("send %d->%d\n", msg.from, msg.to)
 	ch <- msg
 }
-
