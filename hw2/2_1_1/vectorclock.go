@@ -24,3 +24,14 @@ func (clock *VectorClock) Get() [numNodes]int {
 	return clock.ts
 
 }
+
+func IsBefore(tsA [numNodes]int, tsB [numNodes]int) bool {
+	// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
+	// A-/>B if any A_i > B_i for all i \elem [0, len(A))
+	for k := 0; k < numNodes; k++ {
+		if tsA[k] > tsB[k] {
+			return false
+		}
+	}
+	return true
+}

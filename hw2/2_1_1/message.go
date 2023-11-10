@@ -16,6 +16,8 @@ const ( // iota is reset to 0
 	req  Msgtype = iota //  0
 	resp                //  1
 	release
+	own_req_at_q_head
+	
 )
 
 func send(ch chan Msg, msg Msg) {

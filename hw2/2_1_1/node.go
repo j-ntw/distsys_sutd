@@ -13,13 +13,13 @@ type Node struct {
 	clock  VectorClock
 }
 
-func NewNode(id int) *Node {
+func NewNode(id int, own_ch chan Msg) *Node {
 	// create and return a new node
 	// other details like coordinator, data and mode are left as default
 	// ch and ch_arr are assigned in the main program for loop
 	return &Node{
 		id:    id,
-		queue: *NewQueue(),
+		queue: *NewQueue(own_ch),
 		set:   *NewSet()}
 }
 func (self *Node) Critical() {
@@ -30,9 +30,9 @@ func (self *Node) Critical() {
 func (self *Node) reply(resp_msg Msg) {
 	// use as goroutine
 
-	// if not empty, hold the reply
-	self.set.isEmpty() // TODO might panic
-	<-self.set.s_empty_ch
+	// wait until head of queue is the request message we just pushed
+	self.queue.peek()
+	<-self.queue.q_empty_ch
 
 	// reply immediately
 	to_ch := self.ch_arr[resp_msg.to]
@@ -70,11 +70,18 @@ func (self *Node) listen() {
 			self.queue.push(in_msg)
 			resp_msg := Msg{resp, self.id, in_msg.from, [numNodes]int(zeroVector)}
 			// if pending replies, hold reply
-			go self.reply(resp_msg)
+			go self.try_reply(resp_msg)
 		case resp:
 			self.set.del(in_msg.from)
 		case release:
 			self.queue.pop()
+		case own_req_at_q_head:
+			// internal messaging to self
+			if len(self.queue.q_own_req_at_head_ch) == 0 {
+				// its ok to check length then push because listen is only called once and runs in a linear loop
+				self.queue.q_own_req_at_head_ch <- true
+			}
+
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 		}
@@ -107,9 +114,9 @@ func (self *Node) Run() {
 		self.Broadcast((req_msg))
 		fmt.Printf("n%d: broadcast\n", self.id)
 
-		// block while waiting for replies, waiting for own reqeust to pop
-		<-self.queue.q_empty_ch
-		<-self.queue.q_own_req_at_head
+		// block while waiting for replies, waiting for own request to pop
+		<-self.set.s_empty_ch
+		<-self.queue.q_own_req_at_head_ch
 
 		fmt.Printf("n%d: execute\n", self.id)
 		// execute critical section
