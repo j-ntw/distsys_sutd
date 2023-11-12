@@ -11,7 +11,6 @@ import (
 type Queue struct {
 	q                    []Msg
 	q_own_req_at_head_ch chan bool
-	q_empty_ch           chan bool
 	parent_node          *Node
 	watch_map            map[Msg]bool // contains foreign request messages we need to reply to
 	sync.Mutex
@@ -20,9 +19,7 @@ type Queue struct {
 func NewQueue() *Queue {
 	// create and return a new queue
 	return &Queue{
-		q:                    make([]Msg, numNodes),
-		q_own_req_at_head_ch: make(chan bool),
-		q_empty_ch:           make(chan bool),
+		q_own_req_at_head_ch: make(chan bool, 1),
 		watch_map:            make(map[Msg]bool),
 	}
 
@@ -36,9 +33,10 @@ func (self *Queue) push(msg Msg) {
 	self.q = append(self.q, msg)
 
 	// sort/re-prioritise requests in queue based on timestamp
-	sort.Slice(self.q[:], func(i, j int) bool {
-		return IsBefore(self.q[i].ts, self.q[j].ts)
+	sort.SliceStable(self.q, func(i, j int) bool {
+		return IsBefore(self.q[i], self.q[j])
 	})
+
 	self.checkHeadWhileLocked()
 }
 
@@ -48,8 +46,10 @@ func (self *Queue) pop() Msg {
 	if len(self.q) > 0 {
 		val := self.q[0]
 		self.q = self.q[1:]
-
-		self.checkHeadWhileLocked()
+		if len(self.q)>0{
+			self.checkHeadWhileLocked()
+		}
+		
 		return val
 	}
 	return Msg{}
@@ -76,24 +76,30 @@ func (self *Queue) watch(req_msg Msg) {
 func (self *Queue) checkHeadWhileLocked() {
 	// run when queue is modified
 	// unsafe
-
+	fmt.Printf("n%d: queue%v\n", self.parent_node.id, self.q)
+	fmt.Printf("n%d: set%v\n", self.parent_node.id, self.watch_map)
 	// if head of queue is my own message
 	if self.q[0].from == self.parent_node.id {
-
+		// notify via ch
 		if len(self.q_own_req_at_head_ch) == 0 {
-			// if not already notified, notify via ch
-			self.q_own_req_at_head_ch <- true
+			go func() {
+				self.q_own_req_at_head_ch <- true // todo why block here?
+				fmt.Printf("n%d done notify msg\n", self.parent_node.id)
+			}()
 		}
+
 		// else if head of queue is in watch map (some foreign message)
 
 	} else if self.watch_map[self.q[0]] {
 		// check queue if we can reply anyone
-
+		fmt.Printf("n%d can reply someone\n", self.parent_node.id)
 		// create and send reply
 		reply_msg := Msg{reply, self.parent_node.id, self.q[0].from, self.parent_node.clock.Get()}
 		go self.parent_node.reply(reply_msg)
 
 		// delete from watch map
 		delete(self.watch_map, self.q[0])
+	} else {
+		fmt.Printf("n%d: head is some other msg\n", self.parent_node.id)
 	}
 }

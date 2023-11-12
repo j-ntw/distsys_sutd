@@ -16,10 +16,12 @@ const ( // iota is reset to 0
 	req     Msgtype = iota //  0
 	reply                  //  1
 	release                //  2
+	q_own_req_at_head
 )
 
 func send(id int, ch chan Msg, msg Msg) {
 	// use as goroutine
-	fmt.Printf("n%d: send %d->%d\n", id, msg.from, msg.to)
+
 	ch <- msg
+	fmt.Printf("n%d: send %d %d->%d\n", id, msg.msgtype, msg.from, msg.to)
 }

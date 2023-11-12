@@ -28,7 +28,6 @@ func main() {
 
 	// run nodes
 	for i := range node_arr {
-		node_arr[i].ch_arr = ch_arr
 		go node_arr[i].Run()
 	}
 
@@ -41,7 +40,7 @@ func main() {
 	mailbox.Lock()
 	defer mailbox.Unlock()
 	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
-		return IsBefore(mailbox.msg_arr[i].ts, mailbox.msg_arr[j].ts)
+		return IsBefore(mailbox.msg_arr[i], mailbox.msg_arr[j])
 
 	})
 

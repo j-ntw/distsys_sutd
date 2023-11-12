@@ -39,13 +39,29 @@ func (clock *VectorClock) AdjustClock(ts [numNodes]int, msg_ts [numNodes]int) {
 	}
 }
 
-func IsBefore(tsA [numNodes]int, tsB [numNodes]int) bool {
+func IsBefore(msgA Msg, msgB Msg) bool {
+	// compare 2 messages by vector clocks
+	// credit: Sean Yap
 	// A->B, A happens before B if every A_i <= B_i for all i \elem [0, len(A))
 	// A-/>B if any A_i > B_i for all i \elem [0, len(A))
+	sumA := 0
+	sumB := 0
+	// A_bigger_count := 0
 	for k := 0; k < numNodes; k++ {
-		if tsA[k] > tsB[k] {
-			return false
-		}
+		// if msgA.ts[k] > msgB.ts[k] {
+		// 	A_bigger_count++
+		// }
+		sumA += msgA.ts[k]
+		sumB += msgB.ts[k]
 	}
-	return true
+	if sumA == sumB {
+		// equal vector clocks, tie break via node id
+		return msgA.from < msgB.from
+	} else {
+		// return A_bigger_count == len(msgA.ts)
+		return sumA < sumB
+	}
 }
+
+// A [1,1,1,0]
+// B [0,2,0,0]

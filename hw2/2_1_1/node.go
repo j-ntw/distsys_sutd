@@ -27,13 +27,13 @@ func NewNode(id int) *Node {
 
 func (self *Node) Critical() {
 	// normal function
-	fmt.Printf("n%d: critical", self.id)
+	fmt.Printf("n%d: critical\n", self.id)
 }
 
 func (self *Node) Broadcast(out_msg Msg) {
 	// one off broadcast while coordinating
 	fmt.Printf("n%d: do broadcast\n", self.id)
-	for i, other_ch := range self.ch_arr {
+	for i, other_ch := range ch_arr {
 		// do not send to self
 		if i != self.id {
 			out_msg.to = i
@@ -47,7 +47,7 @@ func (self *Node) reply(reply_msg Msg) {
 	// reply immediately
 	self.clock.Inc(self.id)
 
-	to_ch := self.ch_arr[reply_msg.to]
+	to_ch := ch_arr[reply_msg.to]
 	go send(self.id, to_ch, reply_msg)
 }
 
@@ -60,9 +60,11 @@ func (self *Node) listen() {
 		in_msg := <-self.ch
 		mailbox.Append(in_msg)
 		fmt.Printf("n%d: receive %d %d->%d\n", self.id, in_msg.msgtype, in_msg.from, in_msg.to)
+
 		// increment own vectorclock
-		self.clock.Inc(self.id)
+
 		self.clock.AdjustClock(self.clock.ts, in_msg.ts)
+		self.clock.Inc(self.id)
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case req:
@@ -70,63 +72,61 @@ func (self *Node) listen() {
 			self.queue.watch(in_msg)
 			// add req to own queue
 			self.queue.push(in_msg)
-
 		case reply:
 			self.set.del(in_msg.from)
 		case release:
 			self.queue.pop()
+
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 		}
-
 	}
 }
 
 func (self *Node) Run() {
 	// Run is non blocking
-	self.ch = self.ch_arr[self.id]
+	self.ch = ch_arr[self.id]
 	// start listener
 	go self.listen()
 
 	// main node loop
-	go func() {
-		for {
-			// periodically request to enter critical section
-			// stamp request
-			self.clock.Inc(self.id)
-			req_msg := Msg{req, self.id, 0, self.clock.Get()}
-			// add to own queue
-			self.queue.push(req_msg)
 
-			fmt.Printf("n%d: add to own q\n", self.id)
+	for {
+		// periodically request to enter critical section
+		// stamp request
+		self.clock.Inc(self.id)
+		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
+		// add to own queue
+		self.queue.push(req_msg)
 
-			// reset reply_set
-			self.set.init(self.id)
+		fmt.Printf("n%d: add to own q\n", self.id)
 
-			// broadcast request message
-			self.Broadcast((req_msg))
+		// reset reply_set
+		self.set.init(self.id)
 
-			// block while waiting for replies, waiting for own request to pop
-			<-self.set.s_empty_ch
-			<-self.queue.q_own_req_at_head_ch
+		// broadcast request message
+		self.Broadcast(req_msg)
 
-			fmt.Printf("n%d: execute\n", self.id)
-			// execute critical section
-			self.Critical()
+		// block while waiting for replies, waiting for own request to pop
+		<-self.set.s_empty_ch
+		<-self.queue.q_own_req_at_head_ch
 
-			// exit critical section
-			self.queue.pop()
+		fmt.Printf("n%d: execute\n", self.id)
+		// execute critical section
+		self.Critical()
 
-			// send release message
-			release_msg := Msg{release, self.id, 0, self.clock.Get()}
-			self.Broadcast(release_msg)
+		// exit critical section
+		self.queue.pop()
 
-			// sleep before repeating
-			// SleepRand.SleepRand()
-			// fmt.Printf("n%d: bye\n", self.id)
-			// break
+		// send release message
+		release_msg := Msg{release, self.id, 0, self.clock.Get()}
+		self.Broadcast(release_msg)
 
-		}
-	}()
+		// sleep before repeating
+		// SleepRand.SleepRand()
+		fmt.Printf("n%d: bye\n", self.id)
+		break
+
+	}
 
 }
