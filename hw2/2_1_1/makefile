@@ -1,5 +1,5 @@
 all:
-	CGO_ENABLED=1 go run -race main.go message.go node.go queue.go set.go vectorclock.go
+	CGO_ENABLED=1 go run -race main.go mailbox.go message.go node.go queue.go set.go vectorclock.go
 
 
 build:
