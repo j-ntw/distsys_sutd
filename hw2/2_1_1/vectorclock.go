@@ -7,22 +7,36 @@ var (
 )
 
 type VectorClock struct {
-	mu sync.Mutex
+	sync.Mutex
 	ts [numNodes]int
 }
 
 func (clock *VectorClock) Inc(id int) {
 	// increment ts for a particular id
-	clock.mu.Lock()
-	defer clock.mu.Unlock()
+	clock.Lock()
+	defer clock.Unlock()
 	clock.ts[id]++
 }
 func (clock *VectorClock) Get() [numNodes]int {
 	// increment ts for a particular id
-	clock.mu.Lock()
-	defer clock.mu.Unlock()
+	clock.Lock()
+	defer clock.Unlock()
 	return clock.ts
 
+}
+
+func (clock *VectorClock) AdjustClock(ts [numNodes]int, msg_ts [numNodes]int) {
+	clock.Lock()
+	defer clock.Unlock()
+	// element wise comparison/swap of ts
+	for i := 0; i < numNodes; i++ {
+		if msg_ts[i] > ts[i] {
+			clock.ts[i] = msg_ts[i]
+
+		} else {
+			clock.ts[i] = ts[i]
+		}
+	}
 }
 
 func IsBefore(tsA [numNodes]int, tsB [numNodes]int) bool {

@@ -13,14 +13,13 @@ type Msg struct {
 type Msgtype int
 
 const ( // iota is reset to 0
-	req  Msgtype = iota //  0
-	resp                //  1
-	release
-	own_req_at_q_head
-	
+	req     Msgtype = iota //  0
+	reply                  //  1
+	release                //  2
 )
 
-func send(ch chan Msg, msg Msg) {
-	fmt.Printf("send %d->%d\n", msg.from, msg.to)
+func send(id int, ch chan Msg, msg Msg) {
+	// use as goroutine
+	fmt.Printf("n%d: send %d->%d\n", id, msg.from, msg.to)
 	ch <- msg
 }

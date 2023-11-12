@@ -1,6 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"sort"
+	"text/tabwriter"
+)
 
 // implement lamports shared priority queue with vector clock
 
@@ -10,6 +15,7 @@ const (
 
 var ch_arr [numNodes]chan Msg
 var node_arr [numNodes]Node
+var mailbox Mailbox
 
 // all machines are connected to all other machines (use channels)
 func main() {
@@ -29,4 +35,18 @@ func main() {
 	// run while waiting for input
 	var input string
 	fmt.Scanln(&input)
+	// this block runs when user enters any input (final button is Enter key)
+	// stops goroutines from adding to mailbox and processes its contents
+	// sort messages in mailbox by timestamp
+	mailbox.Lock()
+	defer mailbox.Unlock()
+	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
+		return IsBefore(mailbox.msg_arr[i].ts, mailbox.msg_arr[j].ts)
+
+	})
+
+	// print messages in table
+	w := tabwriter.NewWriter(os.Stdout, 20, 0, 1, ' ', 0)
+	mailbox.PrintWhileLocked(w)
+	fmt.Println("Done")
 }
