@@ -7,7 +7,6 @@ import (
 
 type Node struct {
 	ch     chan Msg
-	ch_arr [numNodes]chan Msg
 	id     int
 	queue  Queue // request queue
 	set    Set   // replies set for own request
@@ -69,15 +68,15 @@ func (self *Node) listen() {
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case req:
-			// start reply process
-			self.queue.watch(in_msg)
-			// add req to own queue
-			self.queue.push(in_msg)
+			if self.queue.pushIfPending(in_msg) {
+				// not pending, reply neow
+				reply_msg := Msg{reply, self.id, in_msg.from, [numNodes]int(zeroVector)} // reply will insert the appropriate timestamp
+				self.reply(reply_msg)
+			}
 		case reply:
 			self.set.del(in_msg.from)
 		case release:
 			self.queue.pop()
-
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 		}
@@ -109,16 +108,15 @@ func (self *Node) Run() {
 		// broadcast request message
 		self.Broadcast(req_msg)
 
-		// block while waiting for replies, waiting for own request to pop
+		// block while waiting for replies
 		<-self.set.s_empty_ch
-
 
 		fmt.Printf("n%d: execute\n", self.id)
 		// execute critical section
 		self.Critical()
 
-		// exit critical section
-		self.queue.pop()
+		// exit critical section - walk through Qi
+		self.queue.walk()
 
 		// send release message
 		release_msg := Msg{release, self.id, 0, self.clock.Get()}

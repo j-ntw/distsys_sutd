@@ -48,9 +48,6 @@ func IsBefore(msgA Msg, msgB Msg) bool {
 	sumB := 0
 	// A_bigger_count := 0
 	for k := 0; k < numNodes; k++ {
-		// if msgA.ts[k] > msgB.ts[k] {
-		// 	A_bigger_count++
-		// }
 		sumA += msgA.ts[k]
 		sumB += msgB.ts[k]
 	}
@@ -62,6 +59,3 @@ func IsBefore(msgA Msg, msgB Msg) bool {
 		return sumA < sumB
 	}
 }
-
-// A [1,1,1,0]
-// B [0,2,0,0]

@@ -9,16 +9,16 @@ import (
 // represents the queue of replies at each node.
 // When your current request is at the head of the queue, one of the conditions for CS is fulfilled.
 type Queue struct {
-	q                    []Msg
-	parent_node          *Node
-	watch_map            map[Msg]bool // contains foreign request messages we need to reply to
+	q           []Msg
+	parent_node *Node
+	watch_map   map[Msg]bool // contains foreign request messages we need to reply to
 	sync.Mutex
 }
 
 func NewQueue() *Queue {
 	// create and return a new queue
 	return &Queue{
-		watch_map:            make(map[Msg]bool),
+		watch_map: make(map[Msg]bool),
 	}
 
 }
@@ -34,8 +34,6 @@ func (self *Queue) push(msg Msg) {
 	sort.SliceStable(self.q, func(i, j int) bool {
 		return IsBefore(self.q[i], self.q[j])
 	})
-
-	self.checkHeadWhileLocked()
 }
 
 func (self *Queue) pop() Msg {
@@ -44,10 +42,6 @@ func (self *Queue) pop() Msg {
 	if len(self.q) > 0 {
 		val := self.q[0]
 		self.q = self.q[1:]
-		if len(self.q) > 0 {
-			self.checkHeadWhileLocked()
-		}
-
 		return val
 	}
 	return Msg{}
@@ -62,38 +56,39 @@ func (self *Queue) peek() Msg {
 	}
 	return Msg{}
 }
-func (self *Queue) watch(req_msg Msg) {
-	// after a foreign request is pushed to priority queue
-	// watch for a particular message to be head of queue and
-	// replies to the sender's channel.
+
+func (self *Queue) pushIfPending(msg Msg) bool {
+	// returns intended recepient id if replying now, else return -1
 	self.Lock()
 	defer self.Unlock()
-	self.watch_map[req_msg] = true
+	// if no other reply is pending, reply now
+	if len(self.q) == 0 {
+		return true
+	}
+	// if the head of queue is prior to msg aka pending
+	if IsBefore(self.q[0], msg) {
+		// sort/re-prioritise requests in queue based on timestamp
+		self.q = append(self.q, msg)
+
+		// sort/re-prioritise requests in queue based on timestamp
+		sort.SliceStable(self.q, func(i, j int) bool {
+			return IsBefore(self.q[i], self.q[j])
+		})
+		return false
+	} else {
+		// not pending, reply neow
+		return true
+	}
 }
 
-func (self *Queue) checkHeadWhileLocked() {
-	// run when queue is modified
-	// unsafe
-	fmt.Printf("n%d: queue%v\n", self.parent_node.id, self.q)
-	fmt.Printf("n%d: set%v\n", self.parent_node.id, self.watch_map)
-	// if head of queue is my own message
-	if self.q[0].from == self.parent_node.id {
-		// notify via c
+func (self *Queue) walk() {
+	self.Lock()
+	defer self.Unlock()
+	for i := range self.q {
+		// not pending, reply neow
+		reply_msg := Msg{reply, self.parent_node.id, self.q[i].from, [numNodes]int(zeroVector)}
+		self.parent_node.reply(reply_msg)
 
-		// else if head of queue is in watch map (some foreign message)
-
-	} else if self.watch_map[self.q[0]] {
-		// check queue if we can reply anyone
-		fmt.Printf("n%d can reply someone\n", self.parent_node.id)
-		// create and send reply
-
-		reply_msg := Msg{reply, self.parent_node.id, self.q[0].from, [numNodes]int(zeroVector)}
-		fmt.Printf("\n\n\n%v\n\n\n", reply_msg)
-		go self.parent_node.reply(reply_msg)
-
-		// delete from watch map
-		delete(self.watch_map, self.q[0])
-	} else {
-		fmt.Printf("n%d: head is some other msg\n", self.parent_node.id)
 	}
+	self.q = self.q[:0] // reslice to empty
 }
