@@ -1,6 +1,7 @@
 package main
 
 import (
+	"SleepRand"
 	"fmt"
 )
 
@@ -46,7 +47,7 @@ func (self *Node) reply(reply_msg Msg) {
 	// use as goroutine
 	// reply immediately
 	self.clock.Inc(self.id)
-
+	reply_msg.ts = self.clock.Get()
 	to_ch := ch_arr[reply_msg.to]
 	go send(self.id, to_ch, reply_msg)
 }
@@ -96,6 +97,7 @@ func (self *Node) Run() {
 		// stamp request
 		self.clock.Inc(self.id)
 		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
+		// fmt.Printf("\n\n\n%v\n\n\n", req_msg)
 		// add to own queue
 		self.queue.push(req_msg)
 
@@ -123,10 +125,7 @@ func (self *Node) Run() {
 		self.Broadcast(release_msg)
 
 		// sleep before repeating
-		// SleepRand.SleepRand()
-		fmt.Printf("n%d: bye\n", self.id)
-		break
-
+		SleepRand.SleepRand()
 	}
 
 }

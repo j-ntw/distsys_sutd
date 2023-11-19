@@ -17,3 +17,7 @@
 
         - Note that the case signifies that the respective machine (for which the reply is not received) might not be aware of req(T’) and hence, has not replied. Thus, this particular feature of the protocol ensures property #2 (i.e. each machine is aware of all earlier requests). 
     - Otherwise, reply to req(T)
+
+## troubleshooting
+
+not sure why many responses are sent on zero vector timestamp 

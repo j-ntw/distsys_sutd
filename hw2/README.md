@@ -4,7 +4,7 @@
 ## Requirements
 - Go 1.21.1
 
-## 2_1_1
+## 2_1_1 Lamport’s Shared Priority Queue (Protocol)
 
 ### How to run
 ```
@@ -23,3 +23,4 @@ From To Timestamp Data
 id   id ts        Data
 ```
 
+## 2_1_2 Ricart and Agrawala Lamport’s Shared Priority Queue (Protocol)

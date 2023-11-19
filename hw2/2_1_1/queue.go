@@ -19,7 +19,7 @@ type Queue struct {
 func NewQueue() *Queue {
 	// create and return a new queue
 	return &Queue{
-		q_own_req_at_head_ch: make(chan bool, 1),
+		q_own_req_at_head_ch: make(chan bool),
 		watch_map:            make(map[Msg]bool),
 	}
 
@@ -46,10 +46,10 @@ func (self *Queue) pop() Msg {
 	if len(self.q) > 0 {
 		val := self.q[0]
 		self.q = self.q[1:]
-		if len(self.q)>0{
+		if len(self.q) > 0 {
 			self.checkHeadWhileLocked()
 		}
-		
+
 		return val
 	}
 	return Msg{}
@@ -94,7 +94,9 @@ func (self *Queue) checkHeadWhileLocked() {
 		// check queue if we can reply anyone
 		fmt.Printf("n%d can reply someone\n", self.parent_node.id)
 		// create and send reply
-		reply_msg := Msg{reply, self.parent_node.id, self.q[0].from, self.parent_node.clock.Get()}
+
+		reply_msg := Msg{reply, self.parent_node.id, self.q[0].from, [numNodes]int(zeroVector)}
+		fmt.Printf("\n\n\n%v\n\n\n", reply_msg)
 		go self.parent_node.reply(reply_msg)
 
 		// delete from watch map
