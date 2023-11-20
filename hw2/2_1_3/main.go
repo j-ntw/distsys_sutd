@@ -10,7 +10,7 @@ import (
 // implement lamports shared priority queue with vector clock
 
 const (
-	numNodes = 3
+	numNodes = 4
 	majority = (numNodes + 1) / 2
 )
 
@@ -27,9 +27,9 @@ func main() {
 		node_arr[i] = *NewNode(i)
 	}
 
-	// run nodes in listen mode
+	// run nodes
 	for i := range node_arr {
-		go node_arr[i].listen()
+		go node_arr[i].Run()
 	}
 
 	// insert problems here

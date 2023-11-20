@@ -1,7 +1,6 @@
 package main
 
 import (
-	"SleepRand"
 	"fmt"
 )
 
@@ -41,6 +40,13 @@ func (self *Node) Broadcast(out_msg Msg) {
 			go send(self.id, other_ch, out_msg)
 		}
 	}
+	if out_msg.msgtype == req {
+		// send request to everyone and vote for self
+		out_msg.to = self.id
+		out_msg.msgtype = vote
+		go send(self.id, self.ch, out_msg)
+	}
+
 }
 
 func (self *Node) reply(reply_msg Msg) {
@@ -81,13 +87,14 @@ func (self *Node) listen() {
 			self.set.add(in_msg.from)
 		case release:
 			// TODO: see who else is pending my vote based on queue
-			self.queue.pop()
+
 			if self.queue.isEmpty() {
 				self.voted = false
 			} else {
 				reply_msg := Msg{vote, self.id, self.queue.peek().from, [numNodes]int(zeroVector)}
 				self.reply(reply_msg)
 				self.voted = true
+				self.queue.pop()
 			}
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
@@ -101,30 +108,36 @@ func (self *Node) Run() {
 	// start listener
 	go self.listen()
 
-	// periodically request to enter critical section
+	// request to enter critical section
 	// stamp request
-	self.clock.Inc(self.id)
-	req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
+	if self.id == 0 || self.id == 1 {
+		self.clock.Inc(self.id)
+		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
+		// reset reply_set
+		self.set.init(self.id)
+		self.set.add(self.id)
 
-	// reset reply_set
-	self.set.init(self.id)
-	self.set.add(self.id)
+		// broadcast request message
+		self.Broadcast(req_msg)
+	}
 
-	// broadcast request message
-	self.Broadcast(req_msg)
+	for {
+		// wait for majority of votes to execute critical section
+		// we retain this section which allows us to send more requests elsewhere e.g. in main
+		<-self.set.majority_ch
 
-	// wait for majority of votes
-	<-self.set.majority_ch
+		fmt.Printf("n%d: execute\n", self.id)
+		// execute critical section
+		self.Critical()
 
-	fmt.Printf("n%d: execute\n", self.id)
-	// execute critical section
-	self.Critical()
+		// send release message
+		release_msg := Msg{release, self.id, 0, self.clock.Get()}
+		self.Broadcast(release_msg)
 
-	// send release message
-	release_msg := Msg{release, self.id, 0, self.clock.Get()}
-	self.Broadcast(release_msg)
+		// reset reply_set
+		self.set.init(self.id)
+		self.set.add(self.id)
 
-	// sleep before repeating
-	SleepRand.SleepRand()
+	}
 
 }
