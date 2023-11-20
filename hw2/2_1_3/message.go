@@ -14,8 +14,9 @@ type Msgtype int
 
 const ( // iota is reset to 0
 	req     Msgtype = iota //  0
-	vote                  //  1
+	vote                   //  1
 	release                //  2
+	rescind                //  3
 )
 
 func send(id int, ch chan Msg, msg Msg) {

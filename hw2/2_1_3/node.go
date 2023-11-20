@@ -11,6 +11,9 @@ type Node struct {
 	set   Set   // replies set for own request
 	clock VectorClock
 	voted bool
+	vote  Msg // request i voted for
+	req   Msg //my own request
+
 }
 
 func NewNode(id int) *Node {
@@ -18,6 +21,7 @@ func NewNode(id int) *Node {
 	// other details like coordinator, data and mode are left as default
 	// ch and ch_arr are assigned in the main program for loop
 	x := &Node{
+
 		id:    id,
 		queue: *NewQueue(),
 		set:   *NewSet()}
@@ -76,17 +80,30 @@ func (self *Node) listen() {
 		switch msgtype := in_msg.msgtype; msgtype {
 		case req:
 			if self.voted {
-				// if voted
-				self.queue.push(in_msg)
+				// Deadlock Avoidance
+				// if voted for some older message and T' is later than T send rescind vote
+				if IsBefore(in_msg, self.vote) {
+					reply_msg := Msg{rescind, self.id, self.vote.from, [numNodes]int(zeroVector)}
+					self.clock.Inc(self.id)
+					to_ch := ch_arr[reply_msg.to]
+					go send(self.id, to_ch, reply_msg)
+					self.voted = true
+					self.vote = in_msg
+				} else {
+					self.queue.push(in_msg)
+				}
+
 			} else {
+				// havent voted yet, vote now
 				reply_msg := Msg{vote, self.id, in_msg.from, [numNodes]int(zeroVector)}
 				self.reply(reply_msg)
 				self.voted = true
+				self.vote = in_msg
 			}
 		case vote:
 			self.set.add(in_msg.from)
 		case release:
-			// TODO: see who else is pending my vote based on queue
+			// see who else is pending my vote based on queue
 
 			if self.queue.isEmpty() {
 				self.voted = false
@@ -95,6 +112,21 @@ func (self *Node) listen() {
 				self.reply(reply_msg)
 				self.voted = true
 				self.queue.pop()
+			}
+		case rescind:
+			if !self.set.isCritical() {
+				// release vote to rescinder
+				reply_msg := Msg{release, self.id, in_msg.from, [numNodes]int(zeroVector)}
+				self.reply(reply_msg)
+
+				// update own vote set
+				self.set.del(in_msg.from)
+
+				// re request to the rescind sender, using original request ts
+				reply_msg = Msg{req, self.id, in_msg.from, self.req.ts}
+				self.clock.Inc(self.id)
+				to_ch := ch_arr[reply_msg.to]
+				go send(self.id, to_ch, reply_msg)
 			}
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
@@ -113,6 +145,7 @@ func (self *Node) Run() {
 	if self.id == 0 || self.id == 1 {
 		self.clock.Inc(self.id)
 		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
+		self.req = req_msg
 		// reset reply_set
 		self.set.init(self.id)
 		self.set.add(self.id)
@@ -126,7 +159,6 @@ func (self *Node) Run() {
 		// we retain this section which allows us to send more requests elsewhere e.g. in main
 		<-self.set.majority_ch
 
-		fmt.Printf("n%d: execute\n", self.id)
 		// execute critical section
 		self.Critical()
 
