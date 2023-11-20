@@ -64,7 +64,7 @@ func (self *Node) listen() {
 
 		// increment own vectorclock
 
-		self.clock.AdjustClock(self.clock.ts, in_msg.ts)
+		self.clock.AdjustClock(in_msg.ts)
 		self.clock.Inc(self.id)
 
 		switch msgtype := in_msg.msgtype; msgtype {

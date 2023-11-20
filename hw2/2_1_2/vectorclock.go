@@ -25,16 +25,14 @@ func (clock *VectorClock) Get() [numNodes]int {
 
 }
 
-func (clock *VectorClock) AdjustClock(ts [numNodes]int, msg_ts [numNodes]int) {
+func (clock *VectorClock) AdjustClock(msg_ts [numNodes]int) {
 	clock.Lock()
 	defer clock.Unlock()
 	// element wise comparison/swap of ts
 	for i := 0; i < numNodes; i++ {
-		if msg_ts[i] > ts[i] {
+		if msg_ts[i] > clock.ts[i] {
 			clock.ts[i] = msg_ts[i]
 
-		} else {
-			clock.ts[i] = ts[i]
 		}
 	}
 }
