@@ -10,7 +10,7 @@ import (
 // implement lamports shared priority queue with vector clock
 
 const (
-	numNodes = 4
+	numNodes = 10
 	majority = (numNodes + 1) / 2
 )
 

@@ -97,7 +97,6 @@ func (self *Node) Run() {
 		// stamp request
 		self.clock.Inc(self.id)
 		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
-		// fmt.Printf("\n\n\n%v\n\n\n", req_msg)
 		// add to own queue
 		self.queue.push(req_msg)
 
