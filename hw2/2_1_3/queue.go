@@ -57,38 +57,9 @@ func (self *Queue) peek() Msg {
 	return Msg{}
 }
 
-func (self *Queue) pushIfPending(msg Msg) bool {
-	// returns intended recepient id if replying now, else return -1
+func (self *Queue) isEmpty() bool {
 	self.Lock()
 	defer self.Unlock()
-	// if no other reply is pending, reply now
-	if len(self.q) == 0 {
-		return true
-	}
-	// if the head of queue is prior to msg aka pending
-	if IsBefore(self.q[0], msg) {
-		// sort/re-prioritise requests in queue based on timestamp
-		self.q = append(self.q, msg)
+	return len(self.q) == 0
 
-		// sort/re-prioritise requests in queue based on timestamp
-		sort.SliceStable(self.q, func(i, j int) bool {
-			return IsBefore(self.q[i], self.q[j])
-		})
-		return false
-	} else {
-		// not pending, reply neow
-		return true
-	}
-}
-
-func (self *Queue) walk() {
-	self.Lock()
-	defer self.Unlock()
-	for i := range self.q {
-		// not pending, reply neow
-		reply_msg := Msg{reply, self.parent_node.id, self.q[i].from, [numNodes]int(zeroVector)}
-		self.parent_node.reply(reply_msg)
-
-	}
-	self.q = self.q[:0] // reslice to empty
 }

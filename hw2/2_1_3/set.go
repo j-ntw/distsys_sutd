@@ -6,48 +6,42 @@ import "sync"
 // When the set is empty, one of the conditions for critical section is fulfilled.
 
 type Set struct {
-	s          map[int]bool
-	s_empty_ch chan bool
+	s           map[int]bool
+	majority_ch chan bool
 	sync.Mutex
 }
 
 func NewSet() *Set {
 	// create and return a new set
 	return &Set{
-		s:          make(map[int]bool),
-		s_empty_ch: make(chan bool)}
+		s:           make(map[int]bool),
+		majority_ch: make(chan bool)}
 }
 
 func (self *Set) del(k int) {
 	self.Lock()
 	defer self.Unlock()
 	delete(self.s, k)
-	if len(self.s) == 0 {
-		self.s_empty_ch <- true
-	}
 }
 
 func (self *Set) add(k int) {
 	self.Lock()
 	defer self.Unlock()
 	self.s[k] = true
+	if len(self.s) > majority {
+		self.majority_ch <- true
+	}
 }
 
 func (self *Set) isEmpty() {
 	self.Lock()
 	defer self.Unlock()
-	if len(self.s) == 0 {
-		self.s_empty_ch <- true
-	}
 }
 
 func (self *Set) init(ignore int) {
 	self.Lock()
 	defer self.Unlock()
-	for i := 0; i < numNodes; i++ {
-		if i != ignore {
-			self.s[i] = true
-		}
-
+	for key := range self.s {
+		delete(self.s, key)
 	}
 }

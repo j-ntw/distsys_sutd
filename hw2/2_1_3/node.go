@@ -6,11 +6,12 @@ import (
 )
 
 type Node struct {
-	ch     chan Msg
-	id     int
-	queue  Queue // request queue
-	set    Set   // replies set for own request
-	clock  VectorClock
+	ch    chan Msg
+	id    int
+	queue Queue // request queue
+	set   Set   // replies set for own request
+	clock VectorClock
+	voted bool
 }
 
 func NewNode(id int) *Node {
@@ -63,20 +64,31 @@ func (self *Node) listen() {
 
 		// increment own vectorclock
 
-		self.clock.AdjustClock(self.clock.ts, in_msg.ts)
+		self.clock.AdjustClock(in_msg.ts)
 		self.clock.Inc(self.id)
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case req:
-			if self.queue.pushIfPending(in_msg) {
-				// not pending, reply neow
-				reply_msg := Msg{reply, self.id, in_msg.from, [numNodes]int(zeroVector)} // reply will insert the appropriate timestamp
+			if self.voted {
+				// if voted
+				self.queue.push(in_msg)
+			} else {
+				reply_msg := Msg{vote, self.id, in_msg.from, [numNodes]int(zeroVector)}
 				self.reply(reply_msg)
+				self.voted = true
 			}
-		case reply:
-			self.set.del(in_msg.from)
+		case vote:
+			self.set.add(in_msg.from)
 		case release:
+			// TODO: see who else is pending my vote based on queue
 			self.queue.pop()
+			if self.queue.isEmpty() {
+				self.voted = false
+			} else {
+				reply_msg := Msg{vote, self.id, self.queue.peek().from, [numNodes]int(zeroVector)}
+				self.reply(reply_msg)
+				self.voted = true
+			}
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 		}
@@ -89,41 +101,30 @@ func (self *Node) Run() {
 	// start listener
 	go self.listen()
 
-	// main node loop
+	// periodically request to enter critical section
+	// stamp request
+	self.clock.Inc(self.id)
+	req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
 
-	for {
-		// periodically request to enter critical section
-		// stamp request
-		self.clock.Inc(self.id)
-		req_msg := Msg{req, self.id, 0, self.clock.Get()} // placeholder to_id
-		// fmt.Printf("\n\n\n%v\n\n\n", req_msg)
-		// add to own queue
-		self.queue.push(req_msg)
+	// reset reply_set
+	self.set.init(self.id)
+	self.set.add(self.id)
 
-		fmt.Printf("n%d: add to own q\n", self.id)
+	// broadcast request message
+	self.Broadcast(req_msg)
 
-		// reset reply_set
-		self.set.init(self.id)
+	// wait for majority of votes
+	<-self.set.majority_ch
 
-		// broadcast request message
-		self.Broadcast(req_msg)
+	fmt.Printf("n%d: execute\n", self.id)
+	// execute critical section
+	self.Critical()
 
-		// block while waiting for replies
-		<-self.set.s_empty_ch
+	// send release message
+	release_msg := Msg{release, self.id, 0, self.clock.Get()}
+	self.Broadcast(release_msg)
 
-		fmt.Printf("n%d: execute\n", self.id)
-		// execute critical section
-		self.Critical()
-
-		// exit critical section - walk through Qi
-		self.queue.walk()
-
-		// send release message
-		release_msg := Msg{release, self.id, 0, self.clock.Get()}
-		self.Broadcast(release_msg)
-
-		// sleep before repeating
-		SleepRand.SleepRand()
-	}
+	// sleep before repeating
+	SleepRand.SleepRand()
 
 }

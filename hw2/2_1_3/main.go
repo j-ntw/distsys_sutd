@@ -11,6 +11,7 @@ import (
 
 const (
 	numNodes = 3
+	majority = (numNodes + 1) / 2
 )
 
 var ch_arr [numNodes]chan Msg
@@ -26,10 +27,12 @@ func main() {
 		node_arr[i] = *NewNode(i)
 	}
 
-	// run nodes
+	// run nodes in listen mode
 	for i := range node_arr {
-		go node_arr[i].Run()
+		go node_arr[i].listen()
 	}
+
+	// insert problems here
 
 	// run while waiting for input
 	var input string

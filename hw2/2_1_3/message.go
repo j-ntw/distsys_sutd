@@ -14,7 +14,7 @@ type Msgtype int
 
 const ( // iota is reset to 0
 	req     Msgtype = iota //  0
-	reply                  //  1
+	vote                  //  1
 	release                //  2
 )
 
