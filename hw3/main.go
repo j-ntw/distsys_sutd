@@ -7,20 +7,11 @@ import (
 	"text/tabwriter"
 )
 
-const numProcesses = 3
-
-type AccessType int
-
 const (
-	ReadOnly AccessType = iota
-	WriteOnly
-	ReadWrite
+	numProcesses = 3
+	numPages     = 20
+	numCM        = 1
 )
-
-type Page struct {
-	id   int // owner process id
-	data int
-}
 
 // CM maintains record for all pages
 // the owner and all its copies
@@ -30,26 +21,14 @@ type Page struct {
 
 var (
 	mailbox Mailbox
-	// ch_arr  [numProcesses]chan Msg
-	cm_arr [2]CM
-	p_arr  [numProcesses]Process
+	cm      = *newCM(numProcesses)
+	p_arr   [numProcesses]Process
 )
 
 func main() {
 
-	// create CM, processes
-	for i := range cm_arr {
-		cm_arr[i] = *newCM(i)
-	}
-
-	for i := range p_arr {
-		p_arr[i] = *newProcess(i)
-	}
-
-	// single central manager (with one backup)
-	// a few other processes
 	// Read Protocol
-	// 1. P3 wants to read page x1 (page fault at P3)
+	// 1. P3 wants to read page 1 (page fault at P3)
 	// 2. P3 sends read req to CM (X1. P1)
 	// 3. CM checks page owner and sends read forward to owner P1, adds P3 in copy set
 	// 4. P3 sends Read confirmation to central manager
@@ -62,10 +41,15 @@ func main() {
 	// 4. CM sends write forward for page X1 to P1.
 	// 5. P1 sends X1 to P2, invalidates own copy of X1.
 	// 6. P2 sends write confirmation for X1 to CM.
-	go cm_arr[0].listen()
+
+	go cm.listen()
 	for i := range p_arr {
-		p_arr[i].Run()
+		go p_arr[i].listen()
 	}
+
+	// P3 wants to read page x1 (send request)
+	p_arr[2].SendReadRequest(1)
+
 	// run while waiting for input
 	var input string
 	fmt.Scanln(&input)

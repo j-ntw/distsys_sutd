@@ -19,12 +19,12 @@ const (
 )
 
 type Msg struct {
-	msgtype    MessageType
-	from       int
-	to         int
-	page       Page
-	accessType AccessType //AccessType is for sendPage
-	ts         [numProcesses]int
+	msgtype      MessageType
+	from         int
+	to           int
+	page_no      int
+	requester_id int
+	ts           [numProcesses]int
 }
 
 func send(id int, ch chan Msg, msg Msg) {
