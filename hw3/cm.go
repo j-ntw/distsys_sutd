@@ -24,7 +24,7 @@ func (cm *CM) listen() {
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadRequest:
-			go cm.onReceieveReadRequest(in_msg)
+			go cm.onReceiveReadRequest(in_msg)
 		case WriteRequest:
 		// case ReadForward: CM sends these to P
 		// case WriteForward:
@@ -43,7 +43,7 @@ func (cm *CM) listen() {
 	}
 }
 
-func (cm *CM) onReceieveReadRequest(in_msg Msg) {
+func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	// check page owner, sends read forward to owner
 	owner_id := cm.record[in_msg.page_no].owner_id
 	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
