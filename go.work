@@ -1,4 +1,4 @@
-go 1.21.1
+go 1.21.2
 
 use (
 	./hw1
@@ -8,4 +8,8 @@ use (
 	./hw1/2_1
 	./hw1/CoinFlip
 	./hw1/SleepRand
+	./hw2/2_1_1
+	./hw2/2_1_2
+	./hw2/2_1_3
+	./hw3
 )
