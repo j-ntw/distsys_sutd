@@ -11,7 +11,8 @@ const (
 	WriteRequest
 	ReadForward
 	WriteForward
-	SendPage
+	ReadPage
+	WritePage
 	ReadConfirmation
 	WriteConfirmation
 	Invalidate

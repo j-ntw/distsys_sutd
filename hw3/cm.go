@@ -3,10 +3,10 @@ package main
 import "fmt"
 
 type CM struct {
-	ch     chan Msg
-	id     int
-	clock  VectorClock
-	record []CM_Record
+	ch      chan Msg
+	id      int
+	clock   VectorClock
+	records []CM_Record
 }
 
 func (cm *CM) listen() {
@@ -26,37 +26,67 @@ func (cm *CM) listen() {
 		case ReadRequest:
 			go cm.onReceiveReadRequest(in_msg)
 		case WriteRequest:
-		// case ReadForward: CM sends these to P
-		// case WriteForward:
-
-		// case SendPage: only P sends to P
+			go cm.onReceiveWriteRequest(in_msg)
 		case ReadConfirmation: // CM receives the confirmations
-
+			go cm.onReceiveReadConfirmation(in_msg)
 		case WriteConfirmation:
-		// case Invalidate: // CM sends invalidate command to process
-
+			go cm.onReceiveWriteConfirmation(in_msg)
 		case InvalidateConfirmation:
-
+			go cm.onReceiveInvalidateConfirmation(in_msg)
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 		}
 	}
 }
 
+// Read
 func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	// check page owner, sends read forward to owner
-	owner_id := cm.record[in_msg.page_no].owner_id
+	owner_id := cm.records[in_msg.page_no].owner_id
 	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
-	go send(cm.id, p_arr[owner_id].ch, out_msg)
+	send(cm.id, p_arr[owner_id].ch, out_msg)
 
 	// add requester to copy set and lock this page
-	cm.record[in_msg.page_no].copy_set[in_msg.from] = true
-	cm.record[in_msg.page_no].isLocked = true
+	cm.records[in_msg.page_no].copy_set[in_msg.from] = true
+	cm.records[in_msg.page_no].isLocked = true
+}
+func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
+	cm.records[in_msg.page_no].isLocked = false
 }
 
-func (cm *CM) Run() {}
+// Write
+func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
+
+	// send invalidate to copy set
+	for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
+		// send invalidate to each copy_holder
+		out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+		send(cm.id, p_arr[copy_holder_id].ch, out_msg)
+	}
+}
+
+func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
+	// remove copy_holder from copy_set
+	delete(cm.records[in_msg.page_no].copy_set, in_msg.from)
+	// send write forward to page owner
+	owner_id := cm.records[in_msg.page_no].owner_id
+	out_msg := Msg{WriteForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+	send(cm.id, p_arr[owner_id].ch, out_msg)
+}
+
+func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {
+	cm.records[in_msg.page_no].isLocked = false
+}
+
 func newCM(id int) *CM {
+	recordTable := make([]CM_Record, numPages)
+	// intialise each consecutive range of pages to each consecutive process
+	for i := 0; i < numPages; i++ {
+		record := newRecord(GetInitialOwner(i))
+		recordTable = append(recordTable, *record)
+	}
 	return &CM{
-		ch: make(chan Msg),
+		ch:      make(chan Msg),
+		records: recordTable,
 	}
 }

@@ -26,7 +26,12 @@ var (
 )
 
 func main() {
-
+	go cm.listen()
+	p_arr := make([]Process, numProcesses)
+	for i := range p_arr {
+		p_arr[i] = *newProcess(i)
+		go p_arr[i].listen()
+	}
 	// Read Protocol
 	// 1. P3 wants to read page 1 (page fault at P3)
 	// 2. P3 sends read req to CM (X1. P1)
@@ -41,11 +46,6 @@ func main() {
 	// 4. CM sends write forward for page X1 to P1.
 	// 5. P1 sends X1 to P2, invalidates own copy of X1.
 	// 6. P2 sends write confirmation for X1 to CM.
-
-	go cm.listen()
-	for i := range p_arr {
-		go p_arr[i].listen()
-	}
 
 	// P3 wants to read page x1 (send request)
 	p_arr[2].SendReadRequest(1)

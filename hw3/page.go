@@ -19,11 +19,19 @@ type Page struct {
 	access   AccessType
 }
 
-func newPage() *Page {
+func newPage(isOwner bool) *Page {
+	// if you are the owner, you know that you have readwrite access
+	// if you are not the owner, upon initialising you dont know what access you have == you dont have access
 	return &Page{
-		isOwner:  false,
+		isOwner:  isOwner,
 		isLocked: false,
-		access:   Nil,
+		access: func() AccessType {
+			if isOwner {
+				return ReadWrite
+			} else {
+				return Nil
+			}
+		}(),
 	}
 }
 
@@ -31,4 +39,12 @@ type CM_Record struct {
 	owner_id int
 	copy_set map[int]bool // set of process_ids who have read only copies
 	isLocked bool
+}
+
+func newRecord(id int) *CM_Record {
+	return &CM_Record{
+		owner_id: id,
+		isLocked: false,
+		// zeroed set
+	}
 }
