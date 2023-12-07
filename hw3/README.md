@@ -19,3 +19,7 @@ CM knows about every key.
 • WF (write forward, MGR to owner)
 • WD (write data, owner to writer)
 • WC (write confirm, writer to MGR)
+
+## notes
+
+remove clock, its ok not to be ordered.
