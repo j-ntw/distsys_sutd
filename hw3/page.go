@@ -46,9 +46,10 @@ type CM_Record struct {
 }
 
 func newRecord(id int) *CM_Record {
+	copy_set := make(map[int]bool)
 	return &CM_Record{
 		owner_id: id,
 		isLocked: false,
-		// zeroed set
+		copy_set: copy_set,
 	}
 }

@@ -7,6 +7,8 @@ CM knows about every key.
 
 ### P3 wants to read page 1 (page fault at P3)
 
+### P3 wants to write page 1 (page fault at P3)
+
 
 [ivy ppt](http://www0.cs.ucl.ac.uk/staff/B.Karp/gz03/f2011/lectures/gz03-lecture5-Ivy.pdf)
 • RQ (read query, reader to MGR)

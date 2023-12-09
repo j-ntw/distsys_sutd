@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"text/tabwriter"
 )
 
@@ -9,6 +10,7 @@ type CM struct {
 	ch      chan Msg
 	id      int
 	records []CM_Record
+	sync.Mutex
 }
 
 func (cm *CM) print(w *tabwriter.Writer) {
@@ -47,6 +49,8 @@ func (cm *CM) listen() {
 
 // Read
 func (cm *CM) onReceiveReadRequest(in_msg Msg) {
+	cm.Lock()
+	defer cm.Unlock()
 	// check page owner, sends read forward to owner
 	owner_id := cm.records[in_msg.page_no].owner_id
 	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
@@ -57,12 +61,15 @@ func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	cm.records[in_msg.page_no].isLocked = true
 }
 func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
+	cm.Lock()
+	defer cm.Unlock()
 	cm.records[in_msg.page_no].isLocked = false
 }
 
 // Write
 func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
-
+	cm.Lock()
+	defer cm.Unlock()
 	// send invalidate to copy set
 	for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
 		// send invalidate to each copy_holder
@@ -72,6 +79,8 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 }
 
 func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
+	cm.Lock()
+	defer cm.Unlock()
 	// remove copy_holder from copy_set
 	delete(cm.records[in_msg.page_no].copy_set, in_msg.from)
 	// send write forward to page owner
@@ -81,6 +90,8 @@ func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
 }
 
 func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {
+	cm.Lock()
+	defer cm.Unlock()
 	cm.records[in_msg.page_no].isLocked = false
 }
 
@@ -91,8 +102,12 @@ func newCM(id int) *CM {
 		record := newRecord(GetInitialOwner(i))
 		recordTable = append(recordTable, *record)
 	}
-	return &CM{
+
+	cm := CM{
 		ch:      make(chan Msg),
 		records: recordTable,
+		id:      id + numProcesses,
 	}
+	cm.print(w)
+	return &cm
 }

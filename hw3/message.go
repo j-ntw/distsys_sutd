@@ -25,8 +25,8 @@ func (m MessageType) String() string {
 }
 
 func (msg Msg) String() string {
-	return fmt.Sprintf("Msg{msgtype: %d, from: %d, to: %d, page_no: %d, requester_id: %d}",
-		msg.msgtype, msg.from, msg.to, msg.page_no, msg.requester_id)
+	return fmt.Sprintf("Msg{msgtype: %s, from: %d, to: %d, page_no: %d, requester_id: %d}",
+		msg.msgtype.String(), msg.from, msg.to, msg.page_no, msg.requester_id)
 }
 
 type Msg struct {

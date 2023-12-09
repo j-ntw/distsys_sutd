@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"text/tabwriter"
 )
 
@@ -13,6 +14,7 @@ type Process struct {
 	ch     chan Msg
 	id     int
 	ptable []Page // page table
+	sync.Mutex
 }
 
 func (p *Process) print(w *tabwriter.Writer) {
@@ -52,6 +54,8 @@ func (p *Process) listen() {
 
 // Read
 func (p *Process) SendReadRequest(page_no int) {
+	p.Lock()
+	defer p.Unlock()
 	out_msg := Msg{
 		ReadRequest,
 		p.id,
@@ -66,6 +70,8 @@ func (p *Process) SendReadRequest(page_no int) {
 }
 
 func (p *Process) onReceiveReadForward(in_msg Msg) {
+	p.Lock()
+	defer p.Unlock()
 	// lock page, change access
 	p.ptable[in_msg.page_no].isLocked = true
 	p.ptable[in_msg.page_no].access = ReadOnly
@@ -96,15 +102,26 @@ func (p *Process) SendWriteRequest(page_no int) {
 }
 
 func (p *Process) onReceiveInvalidate(in_msg Msg) {
+	p.Lock()
+	defer p.Unlock()
+
+	// invalidate copy
+	p.ptable[in_msg.page_no].isOwner = false // idempotent
+	p.ptable[in_msg.page_no].isLocked = true
+	p.ptable[in_msg.page_no].access = Nil
+
 	// send back to CM InvalidateConfirmation
 	out_msg := Msg{InvalidateConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)
 }
 
 func (p *Process) onReceiveWriteForward(in_msg Msg) {
+	p.Lock()
+	defer p.Unlock()
 	// invalidate own copy by setting access to nil, isOwner to false
 	// sending data is simulated with the send page message type
 	p.ptable[in_msg.page_no].isOwner = false
+	p.ptable[in_msg.page_no].isLocked = true // idempotent
 	p.ptable[in_msg.page_no].access = Nil
 
 	// sendPage to requester
@@ -133,6 +150,15 @@ func newProcess(id int) *Process {
 		id:     id,
 		ptable: ptable,
 	}
+}
+
+func newProcessArray() *[]Process {
+	p_arr := make([]Process, numProcesses)
+	for i := range p_arr {
+		p_arr[i] = *newProcess(i)
+		p_arr[i].print(w)
+	}
+	return &p_arr
 }
 
 func GetInitialOwner(id int) int {
