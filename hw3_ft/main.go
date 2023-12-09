@@ -11,13 +11,14 @@ import (
 const (
 	numProcesses = 3
 	numPages     = 5
-	numCM        = 1
+	numCM        = 2
 )
 
 var (
 	mailbox Mailbox
 	// instantiate/print
-	cm         = *newCM(0)
+	cm         *CM
+	cm_arr     = *newCMArray()
 	p_arr      = *newProcessArray()
 	w          = tabwriter.NewWriter(os.Stdout, 10, 0, 1, ' ', 0)
 	test_read  bool
@@ -30,8 +31,12 @@ func main() {
 	flag.BoolVar(&test_write, "w", false, "Testing write once.")
 	flag.Parse()
 
+	// set main up
+	cm = &cm_arr[0]
+
 	// start listeners
-	go cm.listen()
+	go cm.run()
+	go cm_arr[1].monitor()
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
