@@ -19,6 +19,10 @@ type Page struct {
 	access   AccessType
 }
 
+func (a AccessType) String() string {
+	return [...]string{"ReadOnly", "WriteOnly", "ReadWrite", "Nil"}[a]
+}
+
 func newPage(isOwner bool) *Page {
 	// if you are the owner, you know that you have readwrite access
 	// if you are not the owner, upon initialising you dont know what access you have == you dont have access

@@ -1,11 +1,23 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"text/tabwriter"
+)
 
 type CM struct {
 	ch      chan Msg
 	id      int
 	records []CM_Record
+}
+
+func (cm *CM) print(w *tabwriter.Writer) {
+	fmt.Printf("cm%d:\n", cm.id)
+	fmt.Fprintln(w, "Record\tOwner_ID\tisLocked\tcopy_set")
+	for i, record := range cm.records {
+		fmt.Fprintf(w, "%d\t%d\t%v\t%v\n", i, record.owner_id, record.isLocked, record.copy_set)
+	}
+	w.Flush()
 }
 
 func (cm *CM) listen() {
@@ -14,8 +26,8 @@ func (cm *CM) listen() {
 		// receive message
 		in_msg := <-cm.ch
 		mailbox.Append(in_msg)
-		fmt.Printf("cm%d: receive %v\n", cm.id, in_msg)
-
+		// fmt.Printf("cm%d: receive %v\n", cm.id, in_msg)
+		fmt.Printf("cm%d: receive %s\n", cm.id, in_msg.String())
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadRequest:
 			go cm.onReceiveReadRequest(in_msg)
@@ -73,7 +85,7 @@ func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {
 }
 
 func newCM(id int) *CM {
-	recordTable := make([]CM_Record, numPages)
+	recordTable := make([]CM_Record, 0)
 	// intialise each consecutive range of pages to each consecutive process
 	for i := 0; i < numPages; i++ {
 		record := newRecord(GetInitialOwner(i))

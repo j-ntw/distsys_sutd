@@ -8,7 +8,7 @@ import (
 
 const (
 	numProcesses = 3
-	numPages     = 20
+	numPages     = 5
 	numCM        = 1
 )
 
@@ -22,13 +22,21 @@ var (
 	mailbox Mailbox
 	cm      = *newCM(numProcesses)
 	p_arr   [numProcesses]Process
+	w       = tabwriter.NewWriter(os.Stdout, 10, 0, 1, ' ', 0)
 )
 
 func main() {
-	go cm.listen()
+	// instantiate/print
+	cm.print(w)
 	p_arr := make([]Process, numProcesses)
 	for i := range p_arr {
 		p_arr[i] = *newProcess(i)
+		p_arr[i].print(w)
+	}
+
+	// start listeners
+	go cm.listen()
+	for i := range p_arr {
 		go p_arr[i].listen()
 	}
 	// Read Protocol
@@ -59,7 +67,7 @@ func main() {
 	defer mailbox.Unlock()
 
 	// print messages in table
-	w := tabwriter.NewWriter(os.Stdout, 20, 0, 1, ' ', 0)
+
 	mailbox.PrintWhileLocked(w)
 	fmt.Println("Done")
 }

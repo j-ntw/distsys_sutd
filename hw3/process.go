@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"text/tabwriter"
+)
 
 const (
 	AddressSpaceSize = numPages / numProcesses
@@ -12,13 +15,23 @@ type Process struct {
 	ptable []Page // page table
 }
 
+func (p *Process) print(w *tabwriter.Writer) {
+	fmt.Printf("process_%d:\n", p.id)
+	fmt.Fprintln(w, "Page\tisOwner\tisLocked\tAccess")
+	for i, page := range p.ptable {
+		fmt.Fprintf(w, "%d\t%v\t%v\t%s\n", i, page.isOwner, page.isLocked, page.access.String())
+	}
+	w.Flush()
+}
+
 func (p *Process) listen() {
 	fmt.Printf("n%d: start listen\n", p.id)
 	for {
 		// receive message
 		in_msg := <-p.ch
 		mailbox.Append(in_msg)
-		fmt.Printf("n%d: receive %d %d->%d\n", p.id, in_msg.msgtype, in_msg.from, in_msg.to)
+		// fmt.Printf("n%d: receive %d %d->%d\n", p.id, in_msg.msgtype, in_msg.from, in_msg.to)
+		fmt.Printf("p%d: receive %s\n", p.id, in_msg.String())
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadForward:
@@ -107,7 +120,7 @@ func (p *Process) onReceiveWritePage(in_msg Msg) {
 
 func newProcess(id int) *Process {
 	// assign page range
-	ptable := make([]Page, numPages)
+	ptable := make([]Page, 0)
 	for i := 0; i < numPages; i++ {
 
 		isOwner := GetInitialOwner(i) == id
@@ -123,5 +136,5 @@ func newProcess(id int) *Process {
 }
 
 func GetInitialOwner(id int) int {
-	return id / AddressSpaceSize
+	return id % numProcesses
 }
