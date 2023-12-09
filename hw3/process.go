@@ -48,6 +48,7 @@ func (p *Process) listen() {
 			go p.onReceiveInvalidate(in_msg)
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
+			panic(in_msg)
 		}
 	}
 }
@@ -99,6 +100,8 @@ func (p *Process) SendWriteRequest(page_no int) {
 		p.id,
 	}
 	send(p.id, cm.ch, out_msg)
+	// lock page
+	p.ptable[page_no].isLocked = true
 }
 
 func (p *Process) onReceiveInvalidate(in_msg Msg) {

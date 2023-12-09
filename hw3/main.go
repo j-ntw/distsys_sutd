@@ -50,13 +50,7 @@ func main() {
 	fmt.Scanln(&input)
 	// this block runs when user enters any input (final button is Enter key)
 	// stops goroutines from adding to mailbox and processes its contents
-	// sort messages in mailbox by timestamp
-	mailbox.Lock()
-	defer mailbox.Unlock()
-
-	// print messages in table
-
-	mailbox.PrintWhileLocked(w)
+	mailbox.print(w)
 	fmt.Println("Done")
 }
 

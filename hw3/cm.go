@@ -43,6 +43,7 @@ func (cm *CM) listen() {
 			go cm.onReceiveInvalidateConfirmation(in_msg)
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
+			panic(in_msg)
 		}
 	}
 }
@@ -70,12 +71,20 @@ func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
 func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 	cm.Lock()
 	defer cm.Unlock()
-	// send invalidate to copy set
-	for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
-		// send invalidate to each copy_holder
-		out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
-		send(cm.id, p_arr[copy_holder_id].ch, out_msg)
+	if len(cm.records[in_msg.page_no].copy_set) == 0 {
+		// directly invalidateConfirm with self
+		out_msg := Msg{InvalidateConfirmation, cm.id, cm.id, in_msg.page_no, in_msg.requester_id}
+		send(cm.id, cm.ch, out_msg)
+	} else {
+		// send invalidate to copy set
+		for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
+			// send invalidate to each copy_holder
+			out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
+			fmt.Printf("here!!!\n")
+			send(cm.id, p_arr[copy_holder_id].ch, out_msg)
+		}
 	}
+
 }
 
 func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {

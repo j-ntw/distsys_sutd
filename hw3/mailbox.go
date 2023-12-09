@@ -18,7 +18,9 @@ func (mailbox *Mailbox) Append(msg Msg) {
 	mailbox.msg_arr = append(mailbox.msg_arr, msg)
 
 }
-func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
+func (mailbox *Mailbox) print(w *tabwriter.Writer) {
+	mailbox.Lock()
+	defer mailbox.Unlock()
 	// assuming mailbox mutex is locked, print each item in the array
 	// using the tabwriter formatting
 	fmt.Fprintln(w, "Type\tFrom\tTo\tTimestamp")
