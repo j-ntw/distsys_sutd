@@ -25,7 +25,6 @@ type Msg struct {
 	to           int
 	page_no      int
 	requester_id int
-	ts           [numProcesses]int
 }
 
 func send(id int, ch chan Msg, msg Msg) {

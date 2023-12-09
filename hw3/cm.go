@@ -5,7 +5,6 @@ import "fmt"
 type CM struct {
 	ch      chan Msg
 	id      int
-	clock   VectorClock
 	records []CM_Record
 }
 
@@ -16,11 +15,6 @@ func (cm *CM) listen() {
 		in_msg := <-cm.ch
 		mailbox.Append(in_msg)
 		fmt.Printf("cm%d: receive %v\n", cm.id, in_msg)
-
-		// increment own vectorclock
-		// TODO: not sure if i should include CM in process array
-		// cm.clock.AdjustClock(in_msg.ts)
-		// cm.clock.Inc(cm.id)
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadRequest:
@@ -43,7 +37,7 @@ func (cm *CM) listen() {
 func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	// check page owner, sends read forward to owner
 	owner_id := cm.records[in_msg.page_no].owner_id
-	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
 	send(cm.id, p_arr[owner_id].ch, out_msg)
 
 	// add requester to copy set and lock this page
@@ -60,7 +54,7 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 	// send invalidate to copy set
 	for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
 		// send invalidate to each copy_holder
-		out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+		out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
 		send(cm.id, p_arr[copy_holder_id].ch, out_msg)
 	}
 }
@@ -70,7 +64,7 @@ func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
 	delete(cm.records[in_msg.page_no].copy_set, in_msg.from)
 	// send write forward to page owner
 	owner_id := cm.records[in_msg.page_no].owner_id
-	out_msg := Msg{WriteForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+	out_msg := Msg{WriteForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
 	send(cm.id, p_arr[owner_id].ch, out_msg)
 }
 

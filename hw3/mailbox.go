@@ -23,7 +23,7 @@ func (mailbox *Mailbox) PrintWhileLocked(w *tabwriter.Writer) {
 	// using the tabwriter formatting
 	fmt.Fprintln(w, "Type\tFrom\tTo\tTimestamp")
 	for _, msg := range mailbox.msg_arr {
-		fmt.Fprintf(w, "%d\t%d\t%d\t%v\n", msg.msgtype, msg.from, msg.to, msg.ts)
+		fmt.Fprintf(w, "%d\t%d\t%d\t%d\t%d\n", msg.msgtype, msg.from, msg.to, msg.page_no, msg.page_no)
 	}
 	w.Flush()
 }

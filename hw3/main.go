@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 )
 
@@ -58,10 +57,6 @@ func main() {
 	// sort messages in mailbox by timestamp
 	mailbox.Lock()
 	defer mailbox.Unlock()
-	sort.SliceStable(mailbox.msg_arr, func(i, j int) bool {
-		return IsBefore(mailbox.msg_arr[i], mailbox.msg_arr[j])
-
-	})
 
 	// print messages in table
 	w := tabwriter.NewWriter(os.Stdout, 20, 0, 1, ' ', 0)

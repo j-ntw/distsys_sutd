@@ -10,7 +10,6 @@ type Process struct {
 	ch     chan Msg
 	id     int
 	ptable []Page // page table
-	clock  VectorClock
 }
 
 func (p *Process) listen() {
@@ -20,11 +19,6 @@ func (p *Process) listen() {
 		in_msg := <-p.ch
 		mailbox.Append(in_msg)
 		fmt.Printf("n%d: receive %d %d->%d\n", p.id, in_msg.msgtype, in_msg.from, in_msg.to)
-
-		// increment own vectorclock
-
-		p.clock.AdjustClock(in_msg.ts)
-		p.clock.Inc(p.id)
 
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadForward:
@@ -51,7 +45,6 @@ func (p *Process) SendReadRequest(page_no int) {
 		-1, // CM
 		page_no,
 		p.id,
-		p.clock.Get(),
 	}
 	send(p.id, cm.ch, out_msg)
 
@@ -65,7 +58,7 @@ func (p *Process) onReceiveReadForward(in_msg Msg) {
 	p.ptable[in_msg.page_no].access = ReadOnly
 
 	// send page to requester
-	out_msg := Msg{ReadPage, p.id, in_msg.requester_id, in_msg.page_no, in_msg.requester_id, p.clock.Get()}
+	out_msg := Msg{ReadPage, p.id, in_msg.requester_id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, p_arr[in_msg.requester_id].ch, out_msg)
 	// we simulate the sending of pages with the sendpage typed message,
 	// ideally the actual page will be included
@@ -73,7 +66,7 @@ func (p *Process) onReceiveReadForward(in_msg Msg) {
 
 func (p *Process) onReceiveReadPage(in_msg Msg) {
 	// send read confirmation to CM
-	out_msg := Msg{ReadConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id, p.clock.Get()}
+	out_msg := Msg{ReadConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)
 }
 
@@ -85,14 +78,13 @@ func (p *Process) SendWriteRequest(page_no int) {
 		-1, // CM
 		page_no,
 		p.id,
-		p.clock.Get(),
 	}
 	send(p.id, cm.ch, out_msg)
 }
 
 func (p *Process) onReceiveInvalidate(in_msg Msg) {
 	// send back to CM InvalidateConfirmation
-	out_msg := Msg{InvalidateConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+	out_msg := Msg{InvalidateConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)
 }
 
@@ -103,13 +95,13 @@ func (p *Process) onReceiveWriteForward(in_msg Msg) {
 	p.ptable[in_msg.page_no].access = Nil
 
 	// sendPage to requester
-	out_msg := Msg{WritePage, p.id, in_msg.requester_id, in_msg.page_no, in_msg.requester_id, cm.clock.Get()}
+	out_msg := Msg{WritePage, p.id, in_msg.requester_id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, p_arr[in_msg.requester_id].ch, out_msg)
 }
 
 func (p *Process) onReceiveWritePage(in_msg Msg) {
 	// send write confirmation to CM
-	out_msg := Msg{WriteConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id, p.clock.Get()}
+	out_msg := Msg{WriteConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)
 }
 
