@@ -23,9 +23,9 @@ func (mailbox *Mailbox) print(w *tabwriter.Writer) {
 	defer mailbox.Unlock()
 	// print each item in the array
 	// using the tabwriter formatting
-	fmt.Fprintln(w, "Type\tFrom\tTo\tTimestamp")
+	fmt.Fprintln(w, "Type\tFrom\tTo\tPage\tRequester")
 	for _, msg := range mailbox.msg_arr {
-		fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\n", msg.msgtype.String(), msg.from, msg.to, msg.page_no, msg.page_no)
+		fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%d\n", msg.msgtype.String(), msg.from, msg.to, msg.page_no, msg.requester_id)
 	}
 	w.Flush()
 }

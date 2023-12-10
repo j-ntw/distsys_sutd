@@ -4,12 +4,12 @@ import "sync"
 
 type CM_REF struct {
 	cm *CM
-	sync.Mutex
+	sync.RWMutex
 }
 
 func (cm_ref *CM_REF) GetRef() *CM {
-	cm_ref.Lock()
-	defer cm_ref.Unlock()
+	cm_ref.RLock()
+	defer cm_ref.RUnlock()
 	return cm_ref.cm
 }
 

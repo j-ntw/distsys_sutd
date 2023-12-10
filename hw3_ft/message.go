@@ -39,9 +39,8 @@ type Msg struct {
 	requester_id int
 }
 
-func send(id int, ch chan Msg, msg Msg) {
+func send(ch chan Msg, msg Msg) {
 	// use as goroutine
 	ch <- msg
-	// fmt.Printf("n%d: send %s %d->%d\n", id, msg.msgtype.String(), msg.from, msg.to)
-	fmt.Printf("n%d: send %s\n", id, msg.String())
+	fmt.Printf("send %s\n", msg.String())
 }

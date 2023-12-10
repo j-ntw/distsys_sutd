@@ -13,9 +13,9 @@ const (
 // each process can own multiple pages
 // an array of Page structs form a pagetable, with the index of each page as the page number.
 type Page struct {
-	isOwner  bool
-	isLocked bool
-	access   AccessType
+	isOwner bool
+
+	access AccessType
 }
 
 func (a AccessType) String() string {
@@ -26,8 +26,8 @@ func newPage(isOwner bool) *Page {
 	// if you are the owner, you know that you have readwrite access
 	// if you are not the owner, upon initialising you dont know what access you have == you dont have access
 	return &Page{
-		isOwner:  isOwner,
-		isLocked: false,
+		isOwner: isOwner,
+
 		access: func() AccessType {
 			if isOwner {
 				return ReadWrite
@@ -41,14 +41,14 @@ func newPage(isOwner bool) *Page {
 type CM_Record struct {
 	owner_id int
 	copy_set map[int]bool // set of process_ids who have read only copies
-	isLocked bool
+
 }
 
 func newRecord(id int) *CM_Record {
 	copy_set := make(map[int]bool)
 	return &CM_Record{
 		owner_id: id,
-		isLocked: false,
+
 		copy_set: copy_set,
 	}
 }
