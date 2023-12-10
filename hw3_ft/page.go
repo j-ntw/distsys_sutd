@@ -38,17 +38,3 @@ func newPage(isOwner bool) *Page {
 	}
 }
 
-type CM_Record struct {
-	owner_id int
-	copy_set map[int]bool // set of process_ids who have read only copies
-
-}
-
-func newRecord(id int) *CM_Record {
-	copy_set := make(map[int]bool)
-	return &CM_Record{
-		owner_id: id,
-
-		copy_set: copy_set,
-	}
-}

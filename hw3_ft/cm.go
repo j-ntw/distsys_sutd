@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"sync"
 	"text/tabwriter"
 	"time"
 )
@@ -16,14 +15,13 @@ type CM struct {
 	cancelActive context.CancelFunc
 	ctxActive    context.Context
 	role         RoleType
-	records      []CM_Record
-	sync.Mutex
+	records      Records
 }
 
 func (cm *CM) print(w *tabwriter.Writer) {
 	fmt.Printf("cm_%s:\n", cm.role.String())
 	fmt.Fprintln(w, "Record\tOwner_ID\tcopy_set")
-	for i, record := range cm.records {
+	for i, record := range cm.records.Get() {
 		fmt.Fprintf(w, "%d\t%d\t%v\n", i, record.owner_id, record.copy_set)
 	}
 	w.Flush()
@@ -38,9 +36,9 @@ func (cm *CM) listen(ctxMain context.Context) {
 			return
 		case <-ctxMain.Done():
 			return
-		default:
+		case in_msg := <-cm.ch:
 			// receive message
-			in_msg := <-cm.ch
+
 			mailbox.Append(in_msg)
 
 			fmt.Printf("cm_%s: receive %s\n", cm.role.String(), in_msg.String())
@@ -126,6 +124,9 @@ func (cm *CM) monitor(ctxMain context.Context) {
 	defer fmt.Printf("cm_%s: stop monitor\n", cm.role.String())
 	for {
 		select {
+		case <-ctxMain.Done():
+			// The context is canceled, exit the loop
+			return
 		// receive HB message
 		case in_msg := <-cm.ch:
 			if in_msg.msgtype != HeartBeatCM {
@@ -139,9 +140,6 @@ func (cm *CM) monitor(ctxMain context.Context) {
 				fmt.Printf("msgtype: %v", msgtype)
 				panic(in_msg)
 			}
-		case <-ctxMain.Done():
-			// The context is canceled, exit the loop
-			return
 		case <-time.After(timeout):
 			// if Backup dont get any HB message within timeout, Backup becomes active
 			fmt.Printf("cm_%s: Primary failure detected\n", cm.role.String())
@@ -175,15 +173,13 @@ func (cm *CM) onReceiveHeartBeatCM_monitor() {
 
 // Read
 func (cm *CM) onReceiveReadRequest(in_msg Msg) {
-	cm.Lock()
-	defer cm.Unlock()
 	// check page owner, sends read forward to owner
-	owner_id := cm.records[in_msg.page_no].owner_id
+	owner_id := cm.records.GetOwner(in_msg.page_no)
 	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
 	send(p_arr[owner_id].ch, out_msg)
 
-	// add requester to copy set and lock this page
-	cm.records[in_msg.page_no].copy_set[in_msg.from] = true
+	// add requester to copy set
+	cm.records.SetRequester(in_msg.page_no, in_msg.from)
 
 }
 
@@ -192,15 +188,14 @@ func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
 
 // Write
 func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
-	cm.Lock()
-	defer cm.Unlock()
-	if len(cm.records[in_msg.page_no].copy_set) == 0 {
+
+	if cm.records.IsCopySetEmpty(in_msg.page_no) {
 		// directly invalidateConfirm with self
 		out_msg := Msg{InvalidateConfirmation, cm.id, cm.id, in_msg.page_no, in_msg.requester_id}
 		send(cm.ch, out_msg)
 	} else {
 		// send invalidate to copy set
-		for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
+		for copy_holder_id := range cm.records.GetCopySet(in_msg.page_no) {
 			// send invalidate to each copy_holder
 			out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
 			send(p_arr[copy_holder_id].ch, out_msg)
@@ -209,12 +204,10 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 }
 
 func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
-	cm.Lock()
-	defer cm.Unlock()
 	// remove copy_holder from copy_set
-	delete(cm.records[in_msg.page_no].copy_set, in_msg.from)
+	cm.records.DeleteCopyHolder(in_msg.page_no, in_msg.from)
 	// send write forward to page owner
-	owner_id := cm.records[in_msg.page_no].owner_id
+	owner_id := cm.records.GetOwner(in_msg.page_no)
 	out_msg := Msg{WriteForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
 	send(p_arr[owner_id].ch, out_msg)
 }
@@ -239,7 +232,7 @@ func newCM(id int) *CM {
 
 	cm := CM{
 		ch:           make(chan Msg),
-		records:      recordTable,
+		records:      *newRecords(recordTable),
 		id:           id + numProcesses,
 		role:         Unused,
 		cancelActive: cancelActive,
