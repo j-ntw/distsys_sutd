@@ -32,7 +32,6 @@ func (p *Process) listen() {
 		// receive message
 		in_msg := <-p.ch
 		mailbox.Append(in_msg)
-		// fmt.Printf("n%d: receive %d %d->%d\n", p.id, in_msg.msgtype, in_msg.from, in_msg.to)
 		fmt.Printf("p%d: receive %s\n", p.id, in_msg.String())
 
 		switch msgtype := in_msg.msgtype; msgtype {

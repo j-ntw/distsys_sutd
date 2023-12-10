@@ -28,14 +28,14 @@ func (cm *CM) listen() {
 		// receive message
 		in_msg := <-cm.ch
 		mailbox.Append(in_msg)
-		// fmt.Printf("cm%d: receive %v\n", cm.id, in_msg)
+	
 		fmt.Printf("cm%d: receive %s\n", cm.id, in_msg.String())
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadRequest:
 			go cm.onReceiveReadRequest(in_msg)
 		case WriteRequest:
 			go cm.onReceiveWriteRequest(in_msg)
-		case ReadConfirmation: // CM receives the confirmations
+		case ReadConfirmation: 
 			go cm.onReceiveReadConfirmation(in_msg)
 		case WriteConfirmation:
 			go cm.onReceiveWriteConfirmation(in_msg)
@@ -80,7 +80,6 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 		for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
 			// send invalidate to each copy_holder
 			out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
-			fmt.Printf("here!!!\n")
 			send(cm.id, p_arr[copy_holder_id].ch, out_msg)
 		}
 	}
