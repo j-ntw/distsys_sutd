@@ -57,10 +57,11 @@ func (p *Process) listen() {
 func (p *Process) SendReadRequest(page_no int) {
 	p.Lock()
 	defer p.Unlock()
+	cm := cm_ref.GetRef()
 	out_msg := Msg{
 		ReadRequest,
 		p.id,
-		-1, // CM
+		cm.id, // CM
 		page_no,
 		p.id,
 	}
@@ -86,12 +87,14 @@ func (p *Process) onReceiveReadForward(in_msg Msg) {
 
 func (p *Process) onReceiveReadPage(in_msg Msg) {
 	// send read confirmation to CM
+	cm := cm_ref.GetRef()
 	out_msg := Msg{ReadConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)
 }
 
 // Write
 func (p *Process) SendWriteRequest(page_no int) {
+	cm := cm_ref.GetRef()
 	out_msg := Msg{
 		WriteRequest,
 		p.id,
@@ -107,7 +110,7 @@ func (p *Process) SendWriteRequest(page_no int) {
 func (p *Process) onReceiveInvalidate(in_msg Msg) {
 	p.Lock()
 	defer p.Unlock()
-
+	cm := cm_ref.GetRef()
 	// invalidate copy
 	p.ptable[in_msg.page_no].isOwner = false // idempotent
 	p.ptable[in_msg.page_no].isLocked = true
@@ -133,6 +136,7 @@ func (p *Process) onReceiveWriteForward(in_msg Msg) {
 }
 
 func (p *Process) onReceiveWritePage(in_msg Msg) {
+	cm := cm_ref.GetRef()
 	// send write confirmation to CM
 	out_msg := Msg{WriteConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
 	send(p.id, cm.ch, out_msg)

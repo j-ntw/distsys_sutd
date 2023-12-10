@@ -32,7 +32,21 @@ Page      isOwner   isLocked  Access
 ...
 ```
 Each process and central manager maintains a page table with the same number of rows as there are pages The information they keep is slightly different. CM keeps track of each page's owner and the set of processes that have copies of them. Each process tracks if they own the page and what access rights they have. If they own the page, they have RW access, and if they have acopy, they only have read access.
+## Fault Tolerant Ivy
+we slow down CM processing to 1 second, and primary sends  heart beat to backup  0,5s, so if primry dies, backup will change the cm reference that all clients use to itself and continue from there
 
+(simulated, its cheating a bit since im basically having an invisible, infallible load balancer that changes internal ip to process facing ip addresses)
+and the primary just copies all its state to the backup on every change to state
+(simulated, since a real life primary isnt restricted by channel structs)
+
+and the primary just copies all its state to the backup on every change to state
+(simulated, since a real life primary isnt restricted by channel structs)
+
+
+when primary comes alive, backup detects heartbeat again, and copies the state over
+
+Joshua Ng, [12/10/2023 12:05 PM]
+is this cheating too much lol
 ## test cases
 
 ### P3 wants to read page 1 (page fault at P3)
@@ -41,20 +55,3 @@ Run `make r`.
 ### P3 wants to write page 1 (page fault at P3)
 Run `make w`.
 
-
-[ivy ppt](http://www0.cs.ucl.ac.uk/staff/B.Karp/gz03/f2011/lectures/gz03-lecture5-Ivy.pdf)
-• RQ (read query, reader to MGR)
-• RF (read forward, MGR to owner)
-• RD (read data, owner to reader)
-• RC (read confirm, reader to MGR)
-• WQ (write query, writer to MGR)
-• IV (invalidate, MGR to copy_set)
-• IC (invalidate confirm, copy_set to MGR)
-• WF (write forward, MGR to owner)
-• WD (write data, owner to writer)
-• WC (write confirm, writer to MGR)
-
-## notes
-
-remove clock, its ok not to be ordered.
-is isLocked needed?

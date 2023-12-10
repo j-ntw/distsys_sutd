@@ -17,7 +17,7 @@ const (
 var (
 	mailbox Mailbox
 	// instantiate/print
-	cm         *CM
+	cm_ref     *CM_REF // a reference to either primary or backup CM that processes use with a mutex
 	cm_arr     = *newCMArray()
 	p_arr      = *newProcessArray()
 	w          = tabwriter.NewWriter(os.Stdout, 10, 0, 1, ' ', 0)
@@ -32,11 +32,11 @@ func main() {
 	flag.Parse()
 
 	// set main up
-	cm = &cm_arr[0]
+	cm_ref = newCM_REF(&cm_arr[0])
 
 	// start listeners
-	go cm_arr[0].run(true)  // Primary starts in active running/listening
-	go cm_arr[1].run(false) // Backup starts in passive monitoring
+	go cm_arr[int(Primary)].run(true) // Primary starts in active running/listening
+	go cm_arr[int(Backup)].run(false) // Backup starts in passive monitoring
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
@@ -44,10 +44,11 @@ func main() {
 	if test_read {
 		// P3 wants to read page x1 (send request)
 		p_arr[2].SendReadRequest(1)
-		//down Primary
-		cm_arr[0].down()
+		//down Primary, Backup should detect loss of HB and start itself
+		cm_arr[Primary].down()
 		p_arr[2].SendReadRequest(1)
-		cm_arr[0].run(true)
+		// start Primary again
+		cm_arr[Primary].run(true)
 	}
 	if test_write {
 		// optional: make some copies

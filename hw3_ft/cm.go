@@ -8,6 +8,7 @@ import (
 )
 
 const timeout time.Duration = time.Millisecond * 500 //milliseconds
+
 type CM struct {
 	ch           chan Msg
 	id           int
@@ -159,8 +160,10 @@ func (cm *CM) monitor() {
 				panic(in_msg)
 			}
 		case <-time.After(timeout):
-			// if you dont get any message within timeout
+			// if you dont get any message within timeout, Backup becomes active
 			cm.ChangeMode(true)
+			// update the reference that the processes use
+			cm_ref.SetRef(&cm_arr[1])
 			return
 		}
 
@@ -170,13 +173,13 @@ func (cm *CM) onReceiveHeartBeatCM(in_msg Msg) {
 	// no logic for normal HB, but as a Backup, if we receive a HB when we are running, we will sync the Primary
 	// and go back to monitoring
 
-	if cm.GetIsRunning() {
+	if cm.GetIsRunning() { // check if Backup is running
 		// sync
 		copyState(Backup, Primary)
 
 		// and go back to monitoring
 		cm.ChangeMode(false)
-
+		cm_ref.SetRef(&cm_arr[0])
 	}
 }
 
