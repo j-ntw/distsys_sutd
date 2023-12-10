@@ -7,25 +7,19 @@ import (
 	"time"
 )
 
-type RoleType int
-
-const (
-	Primary RoleType = iota
-	Backup
-)
-const timeout = 500 //milliseconds
+const timeout time.Duration = time.Millisecond * 500 //milliseconds
 type CM struct {
 	ch           chan Msg
 	id           int
 	mode_changed chan bool
-	isRunning    bool
+	mode         Mode
 	role         RoleType
 	records      []CM_Record
 	sync.Mutex
 }
 
 func (cm *CM) print(w *tabwriter.Writer) {
-	fmt.Printf("cm%d:\n", cm.id)
+	fmt.Printf("cm%d: %s\n", cm.id, cm.role.String())
 	fmt.Fprintln(w, "Record\tOwner_ID\tisLocked\tcopy_set")
 	for i, record := range cm.records {
 		fmt.Fprintf(w, "%d\t%d\t%v\t%v\n", i, record.owner_id, record.isLocked, record.copy_set)
@@ -36,7 +30,7 @@ func (cm *CM) print(w *tabwriter.Writer) {
 func (cm *CM) listen() {
 	fmt.Printf("cm%d: start listen\n", cm.id)
 	for {
-		if !cm.isRunning {
+		if !cm.GetIsRunning() {
 			break
 		}
 		// receive message
@@ -49,7 +43,7 @@ func (cm *CM) listen() {
 			go cm.onReceiveReadRequest(in_msg)
 		case WriteRequest:
 			go cm.onReceiveWriteRequest(in_msg)
-		case ReadConfirmation: // CM receives the confirmations
+		case ReadConfirmation:
 			go cm.onReceiveReadConfirmation(in_msg)
 		case WriteConfirmation:
 			go cm.onReceiveWriteConfirmation(in_msg)
@@ -58,7 +52,7 @@ func (cm *CM) listen() {
 		case HeartBeatCM:
 			go cm.onReceiveHeartBeatCM(in_msg)
 		case Down:
-			break
+			return
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 			panic(in_msg)
@@ -67,102 +61,123 @@ func (cm *CM) listen() {
 
 		// if primary, sync state to backup
 		if cm.role == Primary {
-			cm_arr[0].Lock()
-			cm_arr[1].Lock()
-			defer cm_arr[1].Unlock()
-			defer cm_arr[0].Unlock()
-			cm_arr[1].records = cm_arr[0].records
+			copyState(Primary, Backup)
 		}
 		// add a delay in processing so we can inject kill commands
 		time.Sleep(time.Second)
 	}
 }
 
-func (cm *CM) ChangeMode(change bool) {
-	cm.isRunning = change
-	cm.mode_changed <- change
-}
-
-func (cm *CM) run(change bool) {
-	go cm.ChangeMode(change)
-	for {
-		<-cm.mode_changed
-		if cm.isRunning {
-			// start listening
-			go cm.listen()
-			// start sending heartbeat
-			go cm.throb()
-		} else {
-			go cm.monitor()
-		}
+func (cm *CM) ChangeMode(isRunning bool) {
+	cm.SetIsRunning(isRunning)
+	cm.mode_changed <- isRunning
+	if isRunning {
+		fmt.Printf("cm%d: mode running\n", cm.id)
+	} else {
+		fmt.Printf("cm%d: mode stopped\n", cm.id)
 	}
 
 }
 
+func (cm *CM) GetIsRunning() bool { // helper method
+	return cm.mode.GetIsRunning()
+}
+
+func (cm *CM) SetIsRunning(newBool bool) { // helper method
+	cm.mode.SetIsRunning(newBool)
+}
+
+func (cm *CM) run(change bool) {
+	go cm.ChangeMode(change) // use goroutine because receiving channel is only called later
+	for {
+		<-cm.mode_changed
+
+		if cm.role == Primary {
+			if cm.GetIsRunning() {
+				// start listening
+				go cm.listen()
+				// start sending heartbeat
+				go cm.throb()
+			} else {
+				return
+			}
+		}
+		if cm.role == Backup {
+			if cm.GetIsRunning() {
+				// start listening
+				go cm.listen()
+			} else {
+				// backups typically start off monitoring
+				go cm.monitor()
+			}
+		}
+	}
+}
+
+func scaleDuration(duration time.Duration, factor float64) time.Duration {
+	// Convert duration to float64, multiply, and convert back to time.Duration
+	scaledDuration := time.Duration(float64(duration) * factor)
+	return scaledDuration
+}
+
 func (cm *CM) throb() {
 	// only primary needs to throb
-	if cm.role == Primary {
-		for {
-			if !cm.isRunning {
-				break
-			}
-			// send one hearbeat to each partner
-			out_msg := Msg{msgtype: HeartBeatCM}
-			for partner := range cm_arr {
-				send(cm.id, cm_arr[partner].ch, out_msg)
-			}
-
-			// sleep
-			time.Sleep(time.Millisecond * timeout)
+	fmt.Printf("cm%d: start throb\n", cm.id)
+	for {
+		if !cm.GetIsRunning() {
+			return
 		}
+		// send one hearbeat to partner
+		out_msg := Msg{msgtype: HeartBeatCM}
+
+		// do not send to self
+		send(cm.id, cm_arr[1].ch, out_msg)
+
+		// throb every 450ms
+		time.Sleep(scaleDuration(timeout, 0.9))
 	}
 
 }
 
 func (cm *CM) monitor() {
-	// TODO: listen for heartbeat passively. if not actively listening then monitoring
+	// only backup needs to throb
 
-	// if Primary, you do not receive heartbeats normally
-	// if Backup, you always receive heartbeats.
-	// when heartbeat stops, start running
 	fmt.Printf("cm%d: start monitor\n", cm.id)
-	noResponse := false
-	go func() {
-		// try to run
-		for {
-			if noResponse {
-				break
-			} else {
-				//sleep
-				time.Sleep(time.Millisecond * timeout)
-			}
-		}
-
-	}()
 	for {
+		select {
 		// receive message
-		in_msg := <-cm.ch
-		mailbox.Append(in_msg)
-		fmt.Printf("cm%d: receive %s\n", cm.id, in_msg.String())
-
-		switch msgtype := in_msg.msgtype; msgtype {
-		case HeartBeatCM:
-			go cm.onReceiveHeartBeatCM(in_msg)
-		case Down:
-			break
-		default:
-			fmt.Printf("msgtype: %v", msgtype)
-			panic(in_msg)
+		case in_msg := <-cm.ch:
+			mailbox.Append(in_msg) // TODO: may not want to record HB messages
+			fmt.Printf("cm%d: receive %s\n", cm.id, in_msg.String())
+			switch msgtype := in_msg.msgtype; msgtype {
+			case HeartBeatCM:
+				go cm.onReceiveHeartBeatCM(in_msg)
+			case Down:
+				return
+			default:
+				fmt.Printf("msgtype: %v", msgtype)
+				panic(in_msg)
+			}
+		case <-time.After(timeout):
+			// if you dont get any message within timeout
+			cm.ChangeMode(true)
+			return
 		}
+
 	}
-	// leave monitor to run.
 }
 func (cm *CM) onReceiveHeartBeatCM(in_msg Msg) {
-	// TODO: reset counter
-	cm.noResponse = false
-	// if Primary, you do not receive heartbeats normally
-	// if Backup, you always receive heartbeats.
-	// when heartbeat stops,
+	// no logic for normal HB, but as a Backup, if we receive a HB when we are running, we will sync the Primary
+	// and go back to monitoring
+
+	if cm.GetIsRunning() {
+		// sync
+		copyState(Backup, Primary)
+
+		// and go back to monitoring
+		cm.ChangeMode(false)
+
+	}
 }
 
 // Read
@@ -178,6 +193,7 @@ func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	cm.records[in_msg.page_no].copy_set[in_msg.from] = true
 	cm.records[in_msg.page_no].isLocked = true
 }
+
 func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
 	cm.Lock()
 	defer cm.Unlock()
@@ -197,11 +213,9 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 		for copy_holder_id := range cm.records[in_msg.page_no].copy_set {
 			// send invalidate to each copy_holder
 			out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
-			fmt.Printf("here!!!\n")
 			send(cm.id, p_arr[copy_holder_id].ch, out_msg)
 		}
 	}
-
 }
 
 func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
@@ -222,8 +236,8 @@ func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {
 }
 
 func (cm *CM) down() {
-	if cm.isRunning {
-		cm.isRunning = false
+	if cm.GetIsRunning() {
+		cm.SetIsRunning(false)
 		out_msg := Msg{msgtype: Down}
 		go send(cm.id, cm.ch, out_msg)
 	}
@@ -242,16 +256,20 @@ func newCM(id int) *CM {
 		ch:           make(chan Msg),
 		records:      recordTable,
 		id:           id + numProcesses,
-		isRunning:    false,
+		mode:         *newMode(),
+		role:         Unused,
 		mode_changed: make(chan bool),
 	}
-	cm.print(w)
 	return &cm
 }
 func newCMArray() *[]CM {
 	cm_arr := make([]CM, numCM)
 	for i := range cm_arr {
 		cm_arr[i] = *newCM(i)
+	}
+	cm_arr[0].role = Primary
+	cm_arr[1].role = Backup
+	for i := range cm_arr {
 		cm_arr[i].print(w)
 	}
 	return &cm_arr

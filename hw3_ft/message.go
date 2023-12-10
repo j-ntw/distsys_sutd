@@ -23,7 +23,7 @@ const (
 
 func (m MessageType) String() string {
 	return [...]string{"ReadRequest", "WriteRequest", "ReadForward", "WriteForward", "ReadPage", "WritePage",
-		"ReadConfirmation", "WriteConfirmation", "Invalidate", "InvalidateConfirmation"}[m]
+		"ReadConfirmation", "WriteConfirmation", "Invalidate", "InvalidateConfirmation", "Down", "HeartBeatCM"}[m]
 }
 
 func (msg Msg) String() string {

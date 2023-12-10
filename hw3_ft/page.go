@@ -19,7 +19,7 @@ type Page struct {
 }
 
 func (a AccessType) String() string {
-	return [...]string{"ReadOnly", "WriteOnly", "ReadWrite", "Nil"}[a]
+	return [...]string{"ReadOnly", "ReadWrite", "Nil"}[a]
 }
 
 func newPage(isOwner bool) *Page {

@@ -35,8 +35,8 @@ func main() {
 	cm = &cm_arr[0]
 
 	// start listeners
-	go cm_arr[0].run(true)
-	go cm_arr[0].run(false)
+	go cm_arr[0].run(true)  // Primary starts in active running/listening
+	go cm_arr[1].run(false) // Backup starts in passive monitoring
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
@@ -44,6 +44,10 @@ func main() {
 	if test_read {
 		// P3 wants to read page x1 (send request)
 		p_arr[2].SendReadRequest(1)
+		//down Primary
+		cm_arr[0].down()
+		p_arr[2].SendReadRequest(1)
+		cm_arr[0].run(true)
 	}
 	if test_write {
 		// optional: make some copies

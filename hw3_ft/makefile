@@ -1,9 +1,9 @@
 all:
-	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go page.go process.go
+	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go mode.go page.go process.go role.go
 r:
-	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go page.go process.go -r
+	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go mode.go page.go process.go role.go -r
 w:
-	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go page.go process.go -w
+	CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go mode.go page.go process.go role.go -w
 
 build:
 	go build cm.go main.go mailbox.go message.go page.go process.go
