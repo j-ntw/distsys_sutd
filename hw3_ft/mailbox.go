@@ -21,7 +21,7 @@ func (mailbox *Mailbox) Append(msg Msg) {
 func (mailbox *Mailbox) print(w *tabwriter.Writer) {
 	mailbox.Lock()
 	defer mailbox.Unlock()
-	// assuming mailbox mutex is locked, print each item in the array
+	// print each item in the array
 	// using the tabwriter formatting
 	fmt.Fprintln(w, "Type\tFrom\tTo\tTimestamp")
 	for _, msg := range mailbox.msg_arr {
