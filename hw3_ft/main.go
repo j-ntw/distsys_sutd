@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
-	"time"
 )
 
 // global also used in other files
@@ -50,14 +49,14 @@ func main() {
 			cm_arr[Primary].down()
 
 			// // P3 wants to read page x0 (send request)
-			// p_arr[2].SendReadRequest(0)
+			p_arr[2].SendReadRequest(0)
 			// // // start Primary again
-			// cm_arr[Primary].run(ctx)
+			cm_arr[Primary].run(ctx)
 		} else if test_write {
 			// optional: make some copies
 			// p_arr[0].SendReadRequest(1)
 			cm_arr[Primary].down()
-			// cm_arr[Primary].run(ctx)
+			cm_arr[Primary].run(ctx)
 			// P3 wants to read page x1 (send request)
 			p_arr[2].SendWriteRequest(1)
 		}
@@ -70,7 +69,6 @@ func main() {
 
 	var input string
 	fmt.Scanln(&input)
-	time.Sleep(time.Second)
 	cancel()
 	mailbox.print(w)
 	fmt.Println("Done")

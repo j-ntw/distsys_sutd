@@ -69,7 +69,7 @@ func (cm *CM) listen(ctxMain context.Context) {
 		}
 
 		// add a delay in processing so we can inject kill commands
-		// time.Sleep(time.Second)
+		time.Sleep(time.Second)
 	}
 }
 
