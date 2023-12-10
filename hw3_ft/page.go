@@ -4,7 +4,6 @@ type AccessType int
 
 const (
 	ReadOnly AccessType = iota
-	WriteOnly
 	ReadWrite
 	Nil
 )

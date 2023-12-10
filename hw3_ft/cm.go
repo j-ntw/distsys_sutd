@@ -7,18 +7,20 @@ import (
 	"time"
 )
 
+type RoleType int
+
 const (
 	Primary RoleType = iota
 	Backup
 )
 const timeout = 500 //milliseconds
 type CM struct {
-	ch chan Msg
-	id int
-
-	isRunning bool
-	role      RoleType
-	records   []CM_Record
+	ch           chan Msg
+	id           int
+	mode_changed chan bool
+	isRunning    bool
+	role         RoleType
+	records      []CM_Record
 	sync.Mutex
 }
 
@@ -34,10 +36,13 @@ func (cm *CM) print(w *tabwriter.Writer) {
 func (cm *CM) listen() {
 	fmt.Printf("cm%d: start listen\n", cm.id)
 	for {
+		if !cm.isRunning {
+			break
+		}
 		// receive message
 		in_msg := <-cm.ch
 		mailbox.Append(in_msg)
-		// fmt.Printf("cm%d: receive %v\n", cm.id, in_msg)
+
 		fmt.Printf("cm%d: receive %s\n", cm.id, in_msg.String())
 		switch msgtype := in_msg.msgtype; msgtype {
 		case ReadRequest:
@@ -57,37 +62,61 @@ func (cm *CM) listen() {
 		default:
 			fmt.Printf("msgtype: %v", msgtype)
 			panic(in_msg)
+
 		}
+
+		// if primary, sync state to backup
+		if cm.role == Primary {
+			cm_arr[0].Lock()
+			cm_arr[1].Lock()
+			defer cm_arr[1].Unlock()
+			defer cm_arr[0].Unlock()
+			cm_arr[1].records = cm_arr[0].records
+		}
+		// add a delay in processing so we can inject kill commands
+		time.Sleep(time.Second)
 	}
 }
 
-func (cm *CM) run() {
-	cm.isRunning = true
-	if cm.isRunning {
-		// start listening
-		go cm.listen()
-		// start sending heartbeat
-		go cm.throb()
-	} else {
-		cm.monitor()
+func (cm *CM) ChangeMode(change bool) {
+	cm.isRunning = change
+	cm.mode_changed <- change
+}
+
+func (cm *CM) run(change bool) {
+	go cm.ChangeMode(change)
+	for {
+		<-cm.mode_changed
+		if cm.isRunning {
+			// start listening
+			go cm.listen()
+			// start sending heartbeat
+			go cm.throb()
+		} else {
+			go cm.monitor()
+		}
 	}
 
 }
 
 func (cm *CM) throb() {
-	for {
-		if cm.isRunning {
+	// only primary needs to throb
+	if cm.role == Primary {
+		for {
+			if !cm.isRunning {
+				break
+			}
 			// send one hearbeat to each partner
 			out_msg := Msg{msgtype: HeartBeatCM}
 			for partner := range cm_arr {
 				send(cm.id, cm_arr[partner].ch, out_msg)
 			}
 
-		} else {
-			break
+			// sleep
+			time.Sleep(time.Millisecond * timeout)
 		}
-		// TODO: sleep
 	}
+
 }
 
 func (cm *CM) monitor() {
@@ -210,10 +239,11 @@ func newCM(id int) *CM {
 	}
 
 	cm := CM{
-		ch:        make(chan Msg),
-		records:   recordTable,
-		id:        id + numProcesses,
-		isRunning: false,
+		ch:           make(chan Msg),
+		records:      recordTable,
+		id:           id + numProcesses,
+		isRunning:    false,
+		mode_changed: make(chan bool),
 	}
 	cm.print(w)
 	return &cm

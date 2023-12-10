@@ -35,8 +35,8 @@ func main() {
 	cm = &cm_arr[0]
 
 	// start listeners
-	go cm.run()
-	go cm_arr[1].monitor()
+	go cm_arr[0].run(true)
+	go cm_arr[0].run(false)
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
