@@ -84,7 +84,7 @@ func (p *Process) onReceiveReadPage(in_msg Msg) {
 	// send read confirmation to CM
 	cm := cm_ref.GetRef()
 	out_msg := Msg{ReadConfirmation, p.id, cm.id, in_msg.page_no, in_msg.requester_id}
-	fmt.Printf("cm_%s:\n", cm.role.String())
+	// fmt.Printf("cm_%s:\n", cm.role.String())
 	send(cm.ch, out_msg)
 }
 

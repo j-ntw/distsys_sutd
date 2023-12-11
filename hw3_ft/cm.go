@@ -11,6 +11,7 @@ const timeout time.Duration = time.Millisecond * 500 //milliseconds
 
 type CM struct {
 	ch           chan Msg
+	hb_ch        chan bool
 	id           int
 	cancelActive context.CancelFunc
 	ctxActive    context.Context
@@ -53,23 +54,20 @@ func (cm *CM) listen(ctxMain context.Context) {
 				go cm.onReceiveWriteConfirmation(in_msg)
 			case InvalidateConfirmation:
 				go cm.onReceiveInvalidateConfirmation(in_msg)
-			case HeartBeatCM:
-				go cm.onReceiveHeartBeatCM_listen()
-				return
-			default:
-				fmt.Printf("msgtype: %v", msgtype)
-				panic(in_msg)
-
 			}
-
 			// if primary, sync state to backup
 			if cm.role == Primary {
 				copyState(Primary, Backup)
 			}
+		case <-cm.hb_ch:
+			// if we receive a HB message as a Backup, we are no longer active
+			go cm.onReceiveHeartBeatCM_listen()
+			return
+
 		}
 
-		// add a delay in processing so we can inject kill commands
-		time.Sleep(time.Second)
+		// // add a delay in processing so we can inject kill commands
+		// time.Sleep(time.Second)
 	}
 }
 
@@ -105,10 +103,11 @@ func (cm *CM) pulse(ctxMain context.Context) {
 			return
 		default:
 			// send one hearbeat to partner
-			out_msg := Msg{msgtype: HeartBeatCM}
 
 			// do not send to self
-			send(cm_arr[Backup].ch, out_msg)
+			go func() {
+				cm_arr[Backup].hb_ch <- true
+			}()
 
 			// pulse every 450ms
 			time.Sleep(time.Millisecond * 450)
@@ -128,18 +127,9 @@ func (cm *CM) monitor(ctxMain context.Context) {
 			// The context is canceled, exit the loop
 			return
 		// receive HB message
-		case in_msg := <-cm.ch:
-			if in_msg.msgtype != HeartBeatCM {
-				mailbox.Append(in_msg) // TODO: may not want to record HB messages
-				fmt.Printf("cm_%s: receive %s\n", cm.role.String(), in_msg.String())
-			}
-			switch msgtype := in_msg.msgtype; msgtype {
-			case HeartBeatCM:
-				go cm.onReceiveHeartBeatCM_monitor()
-			default:
-				fmt.Printf("msgtype: %v", msgtype)
-				panic(in_msg)
-			}
+		case <-cm.hb_ch:
+			go cm.onReceiveHeartBeatCM_monitor()
+
 		case <-time.After(timeout):
 			// if Backup dont get any HB message within timeout, Backup becomes active
 			fmt.Printf("cm_%s: Primary failure detected\n", cm.role.String())
@@ -184,6 +174,7 @@ func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 }
 
 func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
+	wg.Done()
 }
 
 // Write
@@ -213,6 +204,7 @@ func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
 }
 
 func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {
+	wg.Done()
 }
 
 func (cm *CM) down() {
@@ -221,7 +213,7 @@ func (cm *CM) down() {
 	cm.cancelActive()
 }
 
-func newCM(id int) *CM {
+func newCM(id int, ch chan Msg, hb_ch chan bool) *CM {
 	recordTable := make([]CM_Record, 0)
 	// intialise each consecutive range of pages to each consecutive process
 	for i := 0; i < numPages; i++ {
@@ -231,7 +223,8 @@ func newCM(id int) *CM {
 	ctxActive, cancelActive := context.WithCancel(context.Background())
 
 	cm := CM{
-		ch:           make(chan Msg),
+		ch:           ch,
+		hb_ch:        hb_ch,
 		records:      *newRecords(recordTable),
 		id:           id + numProcesses,
 		role:         Unused,
@@ -242,8 +235,10 @@ func newCM(id int) *CM {
 }
 func newCMArray() *[]CM {
 	cm_arr := make([]CM, numCM)
+	ch := make(chan Msg)
+	hb_ch := make(chan bool)
 	for i := range cm_arr {
-		cm_arr[i] = *newCM(i)
+		cm_arr[i] = *newCM(i, ch, hb_ch)
 	}
 	cm_arr[0].role = Primary
 	cm_arr[1].role = Backup

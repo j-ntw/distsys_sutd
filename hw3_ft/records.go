@@ -46,7 +46,7 @@ func (records *Records) DeleteCopyHolder(page_no int, requester_id int) {
 func (records *Records) Set(newRecords []CM_Record) {
 	records.Lock()
 	defer records.Unlock()
-	records.records = newRecords
+	records.records = deepCopyCMRecordArray(newRecords)
 }
 
 func newRecords(records []CM_Record) *Records {
@@ -66,4 +66,20 @@ func newRecord(id int) *CM_Record {
 
 		copy_set: copy_set,
 	}
+}
+func deepCopyCMRecordArray(src []CM_Record) []CM_Record {
+	dst := make([]CM_Record, len(src))
+
+	for i, record := range src {
+		// Copy owner_id
+		dst[i].owner_id = record.owner_id
+
+		// Copy copy_set
+		dst[i].copy_set = make(map[int]bool)
+		for key, value := range record.copy_set {
+			dst[i].copy_set[key] = value
+		}
+	}
+
+	return dst
 }
