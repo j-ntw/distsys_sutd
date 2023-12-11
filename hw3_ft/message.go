@@ -17,13 +17,11 @@ const (
 	WriteConfirmation
 	Invalidate
 	InvalidateConfirmation
-	Down
-	HeartBeatCM
 )
 
 func (m MessageType) String() string {
 	return [...]string{"ReadRequest", "WriteRequest", "ReadForward", "WriteForward", "ReadPage", "WritePage",
-		"ReadConfirmation", "WriteConfirmation", "Invalidate", "InvalidateConfirmation", "Down", "HeartBeatCM"}[m]
+		"ReadConfirmation", "WriteConfirmation", "Invalidate", "InvalidateConfirmation"}[m]
 }
 
 func (msg Msg) String() string {

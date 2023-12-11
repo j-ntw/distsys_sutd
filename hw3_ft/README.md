@@ -47,20 +47,36 @@ ReadPage         1         2         1         1
 ReadConfirmation 2         3         1         1
 Done
 ```
+## Normal Ivy
+Implemented in hw3 folder
 
 ## Fault Tolerant Ivy
-we slow down CM processing to 1 second, and primary sends heartbeat to backup  0.5s, so if primary dies, backup will change the cm reference that all clients use to itself and continue from there
+
+Implemented in hw3_ft folder
+
+Primary sends heartbeat to backup every 450ms (arbitrary number), so if primary dies, backup will change the cm reference that all clients use to itself and continue from there. The Primary and Backup shares the same channel that the processes send to, so that no packet is lost. They also share another heartbeat channel, so that the monitor coroutine does not consume the normal messages.
 
 The Primary just copies all its state to the backup on every change to state
 (simulated, since a real life primary isnt restricted by channel structs)
 
-when the primary comes alive, backup detects heartbeat again, and copies the state over
+when the primary comes alive, backup detects heartbeat again, and copies the state over. Primary can resume from last state.
 
-## test cases
+## Caveats
 
-### P3 wants to read page 1 (page fault at P3)
+The single shared channel and cm reference represents a hidden and infallible single point of failure. It is like a hidden load balancer. To get around it, it would be best to fall back to Paxos like protocol so that processes can timeout and re-request and re-elect CM if necessary. However, Paxos like protocol would probably have higher overhead, which would not be suitable for shared memory performance.
+
+
+## test cases for fault tolerant Ivy
+
+### 100 read requests for random pages by random processes
 Run `make r`.
 
-### P3 wants to write page 1 (page fault at P3)
+### 100 write requests for random pages by random processes
 Run `make w`.
 
+
+
+### testing performance
+normal ivy takes about 50ish ms to read 200 pages.
+
+ft ivy takes 500ms for 100 requests whether they are read or write.

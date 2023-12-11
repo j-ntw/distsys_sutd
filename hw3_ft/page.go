@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 type AccessType int
 
 const (
@@ -14,8 +16,34 @@ const (
 // an array of Page structs form a pagetable, with the index of each page as the page number.
 type Page struct {
 	isOwner bool
+	access  AccessType
+}
 
-	access AccessType
+type Pages struct {
+	pages []Page
+	sync.RWMutex
+}
+
+func (pt *Pages) Get() []Page {
+	pt.Lock()
+	defer pt.Unlock()
+	return pt.pages
+}
+
+func (pt *Pages) SetOwner(page_no int, isOwner bool) {
+	pt.Lock()
+	defer pt.Unlock()
+	pt.pages[page_no].isOwner = isOwner
+}
+
+func (pt *Pages) SetAccess(page_no int, access AccessType) {
+	pt.Lock()
+	defer pt.Unlock()
+	pt.pages[page_no].access = access
+}
+
+func newPageTable(pages []Page) *Pages {
+	return &Pages{pages: pages}
 }
 
 func (a AccessType) String() string {
@@ -37,4 +65,3 @@ func newPage(isOwner bool) *Page {
 		}(),
 	}
 }
-

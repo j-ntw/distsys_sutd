@@ -179,7 +179,6 @@ func (cm *CM) onReceiveReadConfirmation(in_msg Msg) {
 
 // Write
 func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
-
 	if cm.records.IsCopySetEmpty(in_msg.page_no) {
 		// directly invalidateConfirm with self
 		out_msg := Msg{InvalidateConfirmation, cm.id, cm.id, in_msg.page_no, in_msg.requester_id}
