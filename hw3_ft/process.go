@@ -90,7 +90,7 @@ func (p *Process) SendWriteRequest(page_no int) {
 	out_msg := Msg{
 		WriteRequest,
 		p.id,
-		-1, // CM
+		cm.id, // CM
 		page_no,
 		p.id,
 	}

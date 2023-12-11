@@ -1,21 +1,28 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
+	"sync"
 	"text/tabwriter"
+	"time"
 )
 
 // global also used in other files
 const (
-	numProcesses = 3
-	numPages     = 5
+	numProcesses = 10
+	numPages     = 100
 	numCM        = 1
+	numReads     = 100
+	numWrites    = 100
 )
 
 var (
 	mailbox Mailbox
+	wg      sync.WaitGroup
 	// instantiate/print
 	cm         = *newCM(0)
 	p_arr      = *newProcessArray()
@@ -30,30 +37,47 @@ func main() {
 	flag.BoolVar(&test_write, "w", false, "Testing write once.")
 	flag.Parse()
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// start listeners
-	go cm.listen()
+	startTime := time.Now()
+	go cm.listen(ctx)
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
 
 	if test_read {
-		// P3 wants to read page x1 (send request)
-		p_arr[2].SendReadRequest(1)
+		wg.Add(numReads)
+		go func() {
+			for i := 0; i < numReads; i++ {
+				// random Process wants to read random page (send request)
+				randomPage := rand.Intn(numPages)
+				randomProcess := rand.Intn(numProcesses)
+				p_arr[randomProcess].SendReadRequest(randomPage)
+
+			}
+		}()
 	}
 	if test_write {
-		// optional: make some copies
-		// p_arr[0].SendReadRequest(1)
-		// P3 wants to read page x1 (send request)
-		p_arr[2].SendWriteRequest(1)
+		wg.Add(numWrites)
+		go func() {
+			for i := 0; i < numWrites; i++ {
+				// random Process wants to write random page (send request)
+				randomPage := rand.Intn(numPages)
+				randomProcess := rand.Intn(numProcesses)
+				p_arr[randomProcess].SendWriteRequest(randomPage)
+
+			}
+		}()
 	}
 
-	// run while waiting for input
-	var input string
-	fmt.Scanln(&input)
-	// this block runs when user enters any input (final button is Enter key)
-	// stops goroutines from adding to mailbox and processes its contents
+	// wait for all requests to finish
+	wg.Wait()
+	elapsedTime := time.Since(startTime)
+
+	cancel()
 	mailbox.print(w)
-	fmt.Println("Done")
+	fmt.Printf("Done in %d ms\n", elapsedTime.Milliseconds())
 }
 
 // Read Protocol

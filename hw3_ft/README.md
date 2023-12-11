@@ -66,7 +66,7 @@ when the primary comes alive, backup detects heartbeat again, and copies the sta
 The single shared channel and cm reference represents a hidden and infallible single point of failure. It is like a hidden load balancer. To get around it, it would be best to fall back to Paxos like protocol so that processes can timeout and re-request and re-elect CM if necessary. However, Paxos like protocol would probably have higher overhead, which would not be suitable for shared memory performance.
 
 
-## test cases for fault tolerant Ivy
+## test cases for normal and fault tolerant Ivy
 
 ### 100 read requests for random pages by random processes
 Run `make r`.
@@ -77,6 +77,6 @@ Run `make w`.
 
 
 ### testing performance
-normal ivy takes about 50ish ms to read 200 pages.
+normal ivy takes about 5ish ms to read 100 pages whether they are read or write.
 
 ft ivy takes 500ms for 100 requests whether they are read or write.
