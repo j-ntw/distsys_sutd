@@ -28,15 +28,15 @@ var (
 	cm_arr     = *newCMArray()
 	p_arr      = *newProcessArray()
 	w          = tabwriter.NewWriter(os.Stdout, 10, 0, 1, ' ', 0)
-	test_read  bool
-	test_write bool
+	test_read  int
+	test_write int
 )
 
 func main() {
 
 	// get test case
-	flag.BoolVar(&test_read, "r", false, fmt.Sprintf("Testing read %d times.", numReads))
-	flag.BoolVar(&test_write, "w", false, fmt.Sprintf("Testing write %d times.", numWrites))
+	flag.IntVar(&test_read, "r", -1, fmt.Sprintf("Testing read %d times.", numReads))
+	flag.IntVar(&test_write, "w", -1, fmt.Sprintf("Testing write %d times.", numWrites))
 	flag.Parse()
 
 	// set main up
@@ -49,8 +49,13 @@ func main() {
 	for i := range p_arr {
 		go p_arr[i].listen()
 	}
+	switch {
 
-	if test_read {
+	case test_read == -1:
+		// do nothing
+
+	case test_read >= 0:
+		// might crash
 		wg.Add(numReads)
 		go func() {
 			primaryDown := false
@@ -60,18 +65,23 @@ func main() {
 				randomProcess := rand.Intn(numProcesses)
 				p_arr[randomProcess].SendReadRequest(randomPage)
 				// random chance for primary to die
-				if rand.Intn(100) < 10 {
+				if rand.Intn(100) < test_read {
 					//down Primary, Backup should detect loss of HB and start itself
 					cm_arr[Primary].down()
 					primaryDown = true
 				}
 				// random chance for primary to come back up
-				if rand.Intn(100) < 10 && primaryDown {
+				if rand.Intn(100) < test_read && primaryDown {
 					cm_arr[Primary].run(ctx)
 				}
 			}
 		}()
-	} else if test_write {
+	}
+
+	switch {
+	case test_write == -1:
+		// do nothing
+	case test_write >= 0:
 		wg.Add(numWrites)
 		go func() {
 			for i := 0; i < numWrites; i++ {
@@ -81,18 +91,19 @@ func main() {
 				randomProcess := rand.Intn(numProcesses)
 				p_arr[randomProcess].SendWriteRequest(randomPage)
 				// random chance for primary to die
-				if rand.Intn(100) < 10 {
+				if rand.Intn(100) < test_write {
 					//down Primary, Backup should detect loss of HB and start itself
 					cm_arr[Primary].down()
 					primaryDown = true
 				}
 				// random chance for primary to come back up
-				if rand.Intn(100) < 10 && primaryDown {
+				if rand.Intn(100) < test_write && primaryDown {
 					cm_arr[Primary].run(ctx)
 				}
 			}
 		}()
 	}
+
 	// wait for all requests to finish
 	wg.Wait()
 	elapsedTime := time.Since(startTime)

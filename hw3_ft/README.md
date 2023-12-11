@@ -69,14 +69,32 @@ The single shared channel and cm reference represents a hidden and infallible si
 ## test cases for normal and fault tolerant Ivy
 
 ### 100 read requests for random pages by random processes
+Normal:
 Run `make r`.
 
+FT:
+
+Run `CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go page.go process.go records.go -r={number of read requests}`.
+
 ### 100 write requests for random pages by random processes
+Normal:
 Run `make w`.
 
+FT:
+
+Run `CGO_ENABLED=1 go run -race cm.go main.go mailbox.go message.go page.go process.go records.go -w={number of write requests}`.
+
+You can use the provided makefile to add specify the cli args.
 
 
-### testing performance
-normal ivy takes about 5ish ms to read 100 pages whether they are read or write.
+## testing performance
+all testing is done for 100 requests, by random processes looking for random pages. (chosen by random choice)
 
-ft ivy takes 500ms for 100 requests whether they are read or write.
+normal ivy takes under 10 ms to read/write 100 pages
+### FT performance
+
+At 0% crashes, ft sometimes takes 10-20 ms but some times takes 100ms for read/write.
+At >0% chance to crash and recover, ft ivy takes 500ms for 100 requests whether they are read or write.
+
+Clearly, normal ivy is more performant, and when ft kicks in, performance reduces by order of 100.
+
