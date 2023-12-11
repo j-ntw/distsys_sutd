@@ -42,5 +42,5 @@ type Msg struct {
 func send(ch chan Msg, msg Msg) {
 	// use as goroutine
 	ch <- msg
-	fmt.Printf("send %s\n", msg.String())
+	// fmt.Printf("send %s\n", msg.String())
 }

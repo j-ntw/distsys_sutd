@@ -8,8 +8,8 @@ type Records struct {
 }
 
 func (records *Records) Get() []CM_Record {
-	records.RLock()
-	defer records.RUnlock()
+	records.Lock()
+	defer records.Unlock()
 	return records.records
 }
 
@@ -46,7 +46,8 @@ func (records *Records) DeleteCopyHolder(page_no int, requester_id int) {
 func (records *Records) Set(newRecords []CM_Record) {
 	records.Lock()
 	defer records.Unlock()
-	records.records = deepCopyCMRecordArray(newRecords)
+	Copy(newRecords, records.records)
+
 }
 
 func newRecords(records []CM_Record) *Records {
@@ -67,7 +68,11 @@ func newRecord(id int) *CM_Record {
 		copy_set: copy_set,
 	}
 }
-func deepCopyCMRecordArray(src []CM_Record) []CM_Record {
+func (records *Records) DeepCopy() []CM_Record {
+	// locks source records (self) and creates a deep copy
+	records.Lock()
+	defer records.Unlock()
+	src := records.records
 	dst := make([]CM_Record, len(src))
 
 	for i, record := range src {
@@ -82,4 +87,17 @@ func deepCopyCMRecordArray(src []CM_Record) []CM_Record {
 	}
 
 	return dst
+}
+
+func Copy(src []CM_Record, dst []CM_Record) {
+	// copies the values from source to destination, without creating new objects or changing pointers
+	for i, record := range src {
+		// Copy owner_id
+		dst[i].owner_id = record.owner_id
+
+		// Copy copy_set
+		for key, value := range record.copy_set {
+			dst[i].copy_set[key] = value
+		}
+	}
 }

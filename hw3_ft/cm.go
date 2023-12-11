@@ -42,18 +42,18 @@ func (cm *CM) listen(ctxMain context.Context) {
 
 			mailbox.Append(in_msg)
 
-			fmt.Printf("cm_%s: receive %s\n", cm.role.String(), in_msg.String())
+			// fmt.Printf("cm_%s: receive %s\n", cm.role.String(), in_msg.String())
 			switch msgtype := in_msg.msgtype; msgtype {
 			case ReadRequest:
-				go cm.onReceiveReadRequest(in_msg)
+				cm.onReceiveReadRequest(in_msg)
 			case WriteRequest:
-				go cm.onReceiveWriteRequest(in_msg)
+				cm.onReceiveWriteRequest(in_msg)
 			case ReadConfirmation:
-				go cm.onReceiveReadConfirmation(in_msg)
+				cm.onReceiveReadConfirmation(in_msg)
 			case WriteConfirmation:
-				go cm.onReceiveWriteConfirmation(in_msg)
+				cm.onReceiveWriteConfirmation(in_msg)
 			case InvalidateConfirmation:
-				go cm.onReceiveInvalidateConfirmation(in_msg)
+				cm.onReceiveInvalidateConfirmation(in_msg)
 			}
 			// if primary, sync state to backup
 			if cm.role == Primary {
@@ -166,7 +166,7 @@ func (cm *CM) onReceiveReadRequest(in_msg Msg) {
 	// check page owner, sends read forward to owner
 	owner_id := cm.records.GetOwner(in_msg.page_no)
 	out_msg := Msg{ReadForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
-	send(p_arr[owner_id].ch, out_msg)
+	go send(p_arr[owner_id].ch, out_msg)
 
 	// add requester to copy set
 	cm.records.SetRequester(in_msg.page_no, in_msg.from)
@@ -183,13 +183,13 @@ func (cm *CM) onReceiveWriteRequest(in_msg Msg) {
 	if cm.records.IsCopySetEmpty(in_msg.page_no) {
 		// directly invalidateConfirm with self
 		out_msg := Msg{InvalidateConfirmation, cm.id, cm.id, in_msg.page_no, in_msg.requester_id}
-		send(cm.ch, out_msg)
+		go send(cm.ch, out_msg)
 	} else {
 		// send invalidate to copy set
 		for copy_holder_id := range cm.records.GetCopySet(in_msg.page_no) {
 			// send invalidate to each copy_holder
 			out_msg := Msg{Invalidate, cm.id, copy_holder_id, in_msg.page_no, in_msg.requester_id}
-			send(p_arr[copy_holder_id].ch, out_msg)
+			go send(p_arr[copy_holder_id].ch, out_msg)
 		}
 	}
 }
@@ -200,7 +200,7 @@ func (cm *CM) onReceiveInvalidateConfirmation(in_msg Msg) {
 	// send write forward to page owner
 	owner_id := cm.records.GetOwner(in_msg.page_no)
 	out_msg := Msg{WriteForward, cm.id, owner_id, in_msg.page_no, in_msg.requester_id}
-	send(p_arr[owner_id].ch, out_msg)
+	go send(p_arr[owner_id].ch, out_msg)
 }
 
 func (cm *CM) onReceiveWriteConfirmation(in_msg Msg) {

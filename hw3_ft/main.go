@@ -13,8 +13,8 @@ import (
 
 // global also used in other files
 const (
-	numProcesses = 3
-	numPages     = 5
+	numProcesses = 10
+	numPages     = 100
 	numCM        = 2
 	numReads     = 100
 	numWrites    = 100
@@ -43,7 +43,7 @@ func main() {
 	cm_ref = newCM_REF(&cm_arr[0])
 	ctx, cancel := context.WithCancel(context.Background())
 	// start listeners
-	x := time.Now()
+	startTime := time.Now()
 	go cm_arr[int(Primary)].run(ctx) // Primary starts in active running/listening
 	go cm_arr[int(Backup)].run(ctx)  // Backup starts in passive monitoring
 	for i := range p_arr {
@@ -93,18 +93,13 @@ func main() {
 			}
 		}()
 	}
-
-	// this block runs when user enters any input (final button is Enter key)
-	// stops goroutines from adding to mailbox and processes its contents
-
-	// run while waiting for input
+	// wait for all requests to finish
 	wg.Wait()
-	x1 := time.Since(x)
-	// var input string
-	// fmt.Scanln(&input)
+	elapsedTime := time.Since(startTime)
+
 	cancel()
-	// mailbox.print(w)
-	fmt.Printf("Done in %d ms\n", x1.Milliseconds())
+	mailbox.print(w)
+	fmt.Printf("Done in %d ms\n", elapsedTime.Milliseconds())
 }
 
 // Read Protocol
