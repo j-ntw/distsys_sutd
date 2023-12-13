@@ -4,35 +4,22 @@
     "type": "split",
     "children": [
       {
-        "id": "10083245f5332d42",
+        "id": "4dd8d09e0d3fa82b",
         "type": "tabs",
         "children": [
           {
-            "id": "3bb514c1c87e1ff4",
+            "id": "25a2dde2c9a144cf",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "5. Paxos and Fault Tolerance.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "94b6ee620b2dcc2e",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "6. Paxos Byzantine Fault Tolerance.md",
+                "file": "7. Dist File Systems.md",
                 "mode": "source",
                 "source": false
               }
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -99,7 +86,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "6. Paxos Byzantine Fault Tolerance.md",
+                "file": "7. Dist File Systems.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -116,7 +103,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "6. Paxos Byzantine Fault Tolerance.md",
+                "file": "7. Dist File Systems.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -139,7 +126,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "6. Paxos Byzantine Fault Tolerance.md"
+                "file": "7. Dist File Systems.md"
               }
             }
           }
@@ -160,13 +147,13 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "94b6ee620b2dcc2e",
+  "active": "25a2dde2c9a144cf",
   "lastOpenFiles": [
+    "6. Paxos Byzantine Fault Tolerance.md",
+    "1.  Definitions.md",
     "5. Paxos and Fault Tolerance.md",
     "9. Questions.md",
-    "6. Paxos Byzantine Fault Tolerance.md",
     "Screenshot 2023-12-11 at 9.50.00 PM.png",
-    "1.  Definitions.md",
     "things i wanted to say.md",
     "4.  Consistency.md",
     "7. Dist File Systems.md",
