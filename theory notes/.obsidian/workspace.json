@@ -4,35 +4,18 @@
     "type": "split",
     "children": [
       {
-        "id": "43d9db66ff160759",
+        "id": "10083245f5332d42",
         "type": "tabs",
         "children": [
           {
-            "id": "738ae55a15d767e0",
+            "id": "3bb514c1c87e1ff4",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "1.  Definitions.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "e3bf4bccff266ed4",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "5. Paxos and Fault Tolerance.md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "empty",
+              "state": {}
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -99,7 +82,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "5. Paxos and Fault Tolerance.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -116,7 +98,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "5. Paxos and Fault Tolerance.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -138,9 +119,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "5. Paxos and Fault Tolerance.md"
-              }
+              "state": {}
             }
           }
         ]
@@ -160,16 +139,17 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "e3bf4bccff266ed4",
+  "active": "3bb514c1c87e1ff4",
   "lastOpenFiles": [
     "1.  Definitions.md",
-    "5. Paxos and Fault Tolerance.md",
     "6. Paxos Byzantine Fault Tolerance.md",
+    "5. Paxos and Fault Tolerance.md",
+    "things i wanted to say.md",
+    "4.  Consistency.md",
+    "7. Dist File Systems.md",
     "9. Questions.md",
     "8. Revision Topics.md",
     "3. Distributed Mutex (DME).md",
-    "2 Clocks and Elections.md",
-    "4.  Consistency.md",
-    "7. Dist File Systems.md"
+    "2 Clocks and Elections.md"
   ]
 }
